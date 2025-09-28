@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ISSGlobe, { TRAIL_POINT_COUNT } from './components/ISSGlobe.jsx';
 
-const API_URL = 'http://api.open-notify.org/iss-now.json';
+const API_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
 
 const formatCoordinate = (value, type) => {
   if (Number.isNaN(value)) {
@@ -45,8 +45,8 @@ function App() {
           throw new Error(`API responded with ${response.status}`);
         }
         const data = await response.json();
-        const latitude = parseFloat(data?.iss_position?.latitude);
-        const longitude = parseFloat(data?.iss_position?.longitude);
+        const latitude = parseFloat(data?.latitude);
+        const longitude = parseFloat(data?.longitude);
 
         if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
           throw new Error('Received invalid ISS coordinates');
@@ -95,7 +95,7 @@ function App() {
           <h1 className="text-xl font-semibold uppercase tracking-[0.25em] text-sky-300 sm:text-2xl">
             Cupola Explorer – ISS Tracker
           </h1>
-          <p className="text-sm text-slate-400">Live orbital data sourced from NASA Open Notify</p>
+          <p className="text-sm text-slate-400">Live orbital data sourced from Where The ISS At</p>
         </div>
       </header>
 
