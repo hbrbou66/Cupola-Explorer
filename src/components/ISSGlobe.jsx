@@ -99,9 +99,8 @@ const ISSGlobe = ({
   weightlessnessIntensity,
   reducedMotion,
   currentTime,
-  playbackSpeed,
-  mode,
   interactionPaused,
+  fastOverlaySuspended,
 }) => {
   const mountRef = useRef(null);
   const stateRef = useRef(null);
@@ -208,7 +207,6 @@ const ISSGlobe = ({
       opacity: 0.6,
     });
     const futureLine = new THREE.Line(futureGeometry, futureMaterial);
-    futureLine.computeLineDistances();
     scene.add(futureLine);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -284,7 +282,6 @@ const ISSGlobe = ({
       swayController,
       clock,
       animationFrame: null,
-      fastOverlaySuspended: false,
     };
     stateRef.current = state;
 
@@ -396,7 +393,10 @@ const ISSGlobe = ({
     if (!state) return;
     if (futurePoints && futurePoints.length > 1) {
       updateLineGeometry(state.future.geometry, futurePoints);
-      state.future.line.computeLineDistances();
+      const positionAttribute = state.future.geometry.attributes?.position;
+      if (positionAttribute && typeof state.future.line.computeLineDistances === 'function') {
+        state.future.line.computeLineDistances();
+      }
       state.future.line.visible = true;
     } else if (state.future) {
       state.future.line.visible = false;
@@ -418,14 +418,14 @@ const ISSGlobe = ({
   useEffect(() => {
     const state = stateRef.current;
     if (!state) return;
-    setOverlayVisibility(state.clouds.mesh, showClouds);
-  }, [showClouds]);
+    setOverlayVisibility(state.clouds.mesh, showClouds && !fastOverlaySuspended);
+  }, [fastOverlaySuspended, showClouds]);
 
   useEffect(() => {
     const state = stateRef.current;
     if (!state) return;
-    setOverlayVisibility(state.aurora.mesh, showAurora && !reducedMotion);
-  }, [reducedMotion, showAurora]);
+    setOverlayVisibility(state.aurora.mesh, showAurora && !reducedMotion && !fastOverlaySuspended);
+  }, [fastOverlaySuspended, reducedMotion, showAurora]);
 
   useEffect(() => {
     const state = stateRef.current;
@@ -446,11 +446,12 @@ const ISSGlobe = ({
   useEffect(() => {
     const state = stateRef.current;
     if (!state) return;
-    const fastPlayback = mode === 'simulated' && playbackSpeed >= 600;
-    const shouldHide = fastPlayback;
-    setOverlayVisibility(state.clouds.mesh, showClouds && !shouldHide);
-    setOverlayVisibility(state.aurora.mesh, showAurora && !reducedMotion && !shouldHide);
-  }, [mode, playbackSpeed, reducedMotion, showAurora, showClouds]);
+    if (!fastOverlaySuspended) {
+      return;
+    }
+    setOverlayVisibility(state.clouds.mesh, false);
+    setOverlayVisibility(state.aurora.mesh, false);
+  }, [fastOverlaySuspended]);
 
   return <div ref={mountRef} className="h-[520px] min-h-[320px] w-full rounded-2xl bg-slate-950/40" aria-label="Earth visualisation" role="presentation" />;
 };
