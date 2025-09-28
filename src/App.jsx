@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ISSGlobe, { TRAIL_POINT_COUNT } from './components/ISSGlobe.jsx';
 
-const API_URL = 'https://api.open-notify.org/iss-now.json';
+const API_URL = 'http://api.open-notify.org/iss-now.json';
 
 const formatCoordinate = (value, type) => {
   if (Number.isNaN(value)) {
