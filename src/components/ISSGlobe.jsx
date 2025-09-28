@@ -227,13 +227,24 @@ const ISSGlobe = ({
     const swayController = new CupolaSwayController(camera, { reducedMotion });
 
     const clock = new THREE.Clock();
-    const resizeObserver = new ResizeObserver(() => {
+    const handleResize = () => {
       const { clientWidth, clientHeight } = container;
       camera.aspect = clientWidth / clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(clientWidth, clientHeight);
-    });
-    resizeObserver.observe(container);
+    };
+
+    let cleanupResize;
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+      const resizeObserver = new window.ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      cleanupResize = () => resizeObserver.disconnect();
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      cleanupResize = () => window.removeEventListener('resize', handleResize);
+    }
+
+    handleResize();
 
     const pointerVector = new THREE.Vector2();
     const headOffset = new THREE.Vector2();
@@ -338,7 +349,7 @@ const ISSGlobe = ({
 
     return () => {
       cancelAnimationFrame(state.animationFrame);
-      resizeObserver.disconnect();
+      cleanupResize?.();
       renderer.domElement.removeEventListener('pointermove', handlePointerMove);
       renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
