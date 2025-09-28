@@ -161,12 +161,22 @@ const eciToGeodetic = (positionEci: THREE.Vector3, gmst: number) => {
 
 export const fetchLatestTle = async (): Promise<TleSet> => {
   const response = await fetch(ISS_TLE_URL, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ISS TLE: ${response.status} ${response.statusText}`);
+  }
   const text = await response.text();
-  const [line1 = '', line2 = ''] = text.trim().split('\n').slice(-2);
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const [line1 = '', line2 = ''] = lines.slice(-2);
   if (!line1 || !line2) {
     throw new Error('Unable to retrieve ISS TLE');
   }
-  return { line1: line1.trim(), line2: line2.trim() };
+  if (!line1.startsWith('1 ') || !line2.startsWith('2 ')) {
+    throw new Error('Received malformed ISS TLE');
+  }
+  return { line1, line2 };
 };
 
 export const getIssPositionAt = (satrec: SimpleSatRec, timestamp: number): IssGeodeticPosition | null => {

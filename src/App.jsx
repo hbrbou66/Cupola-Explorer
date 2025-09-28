@@ -114,6 +114,7 @@ function App() {
         if (!cancelled) {
           setError('Unable to retrieve updated orbital elements. Falling back to last known state.');
           setSatrec((current) => current ?? createSatrec(FALLBACK_TLE));
+          console.warn('Using cached or fallback ISS orbit after fetch failure.');
         }
       }
     };
