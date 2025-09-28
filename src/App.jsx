@@ -92,6 +92,8 @@ function App() {
 
   const liveBadge = mode === 'live' ? 'Live orbit' : 'Simulated playback';
 
+  const fastOverlaySuspended = mode === 'simulated' && speed >= 600;
+
   const allowWeightlessHud = weightlessnessEnabled && !reducedMotion && !isInteracting;
 
   const tooltipVisible = !tooltipDismissed;
@@ -249,9 +251,8 @@ function App() {
               weightlessnessIntensity={weightlessnessIntensity}
               reducedMotion={reducedMotion}
               currentTime={currentTime}
-              playbackSpeed={speed}
-              mode={mode}
               interactionPaused={isInteracting}
+              fastOverlaySuspended={fastOverlaySuspended}
             />
           </div>
 
@@ -363,23 +364,48 @@ function App() {
 
             <div className="flex flex-wrap items-center gap-4">
               {[
-                ['showTerminator', 'Terminator', showTerminator, setShowTerminator],
-                ['showClouds', 'Clouds', showClouds, setShowClouds],
-                ['showAurora', 'Aurora', showAurora, setShowAurora],
-                ['showCityLights', 'City Lights', showCityLights, setShowCityLights],
-                ['reducedMotion', 'Reduced Motion', reducedMotion, setReducedMotion],
-              ].map(([key, label, value, setter]) => (
-                <label key={key} className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                { key: 'showTerminator', label: 'Terminator', value: showTerminator, setter: setShowTerminator },
+                {
+                  key: 'showClouds',
+                  label: 'Clouds',
+                  value: showClouds,
+                  setter: setShowClouds,
+                  disabled: fastOverlaySuspended,
+                },
+                {
+                  key: 'showAurora',
+                  label: 'Aurora',
+                  value: showAurora,
+                  setter: setShowAurora,
+                  disabled: fastOverlaySuspended,
+                },
+                { key: 'showCityLights', label: 'City Lights', value: showCityLights, setter: setShowCityLights },
+                { key: 'reducedMotion', label: 'Reduced Motion', value: reducedMotion, setter: setReducedMotion },
+              ].map(({ key, label, value, setter, disabled }) => (
+                <label
+                  key={key}
+                  className={`flex items-center gap-2 text-sm font-medium ${
+                    disabled ? 'text-slate-500' : 'text-slate-200'
+                  }`}
+                  aria-disabled={disabled || undefined}
+                >
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:border-slate-700 disabled:bg-slate-900/40"
                     checked={value}
                     onChange={(event) => setter(event.target.checked)}
                     aria-label={label}
+                    disabled={disabled}
+                    title={disabled ? 'Temporarily hidden at high playback speeds' : undefined}
                   />
                   {label}
                 </label>
               ))}
+              {fastOverlaySuspended && (
+                <p className="w-full text-[0.7rem] text-amber-300/80">
+                  Overlays are temporarily hidden at very high playback speeds to keep the simulation smooth.
+                </p>
+              )}
             </div>
           </div>
 
