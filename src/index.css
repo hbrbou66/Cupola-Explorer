@@ -21,3 +21,24 @@ a {
 #root {
   min-height: 100vh;
 }
+
+@keyframes weightlessDrift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(4px, -6px, 0) rotate(0.5deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+.weightless-hud .weightless-float {
+  animation: weightlessDrift 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.weightless-hud .weightless-float.delay-150 {
+  animation-delay: 0.75s;
+}
