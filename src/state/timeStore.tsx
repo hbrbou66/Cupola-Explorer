@@ -60,8 +60,22 @@ const clampToTimelineWindow = (timestamp: number) => {
 
 export function TimeProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<TimeState>(() => createInitialState());
+  const [wallClockNow, setWallClockNow] = useState(() => Date.now());
   const accumulatorRef = useRef(0);
   const lastTimestampRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let animationFrame: number;
+
+    const updateWallClock = () => {
+      setWallClockNow(Date.now());
+      animationFrame = requestAnimationFrame(updateWallClock);
+    };
+
+    animationFrame = requestAnimationFrame(updateWallClock);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
 
   useEffect(() => {
     let animationFrame: number;
@@ -201,12 +215,11 @@ export function TimeProvider({ children }: PropsWithChildren) {
 
   const timelineRange = useMemo(() => {
     const windowMs = TIMELINE_WINDOW_HOURS * 60 * 60 * 1000;
-    const now = Date.now();
     return {
-      min: now - windowMs,
-      max: now + windowMs,
+      min: wallClockNow - windowMs,
+      max: wallClockNow + windowMs,
     };
-  }, [state.currentTime]);
+  }, [wallClockNow]);
 
   const value = useMemo<TimeContextValue>(
     () => ({
