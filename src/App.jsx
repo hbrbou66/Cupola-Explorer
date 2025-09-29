@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ISSGlobe from './components/ISSGlobe.jsx';
 import TimeControls from './components/TimeControls.jsx';
+import HudMenuPanel from './components/HudMenuPanel.tsx';
 import {
   FALLBACK_TLE,
   buildFutureTrack,
@@ -10,6 +11,7 @@ import {
   getScenePositionAt,
 } from './utils/iss.ts';
 import { useTimeStore } from './state/timeStore.tsx';
+import './styles/hud-menu.css';
 
 const WEIGHTLESS_DEFAULT = 0.4;
 const TOOLTIP_STORAGE_KEY = 'cupola-tooltips-dismissed';
@@ -89,6 +91,7 @@ function App() {
   });
   const [tooltipDismissed, setTooltipDismissed] = usePersistentState(TOOLTIP_STORAGE_KEY, false);
   const [isInteracting, setIsInteracting] = useState(false);
+  const [hudMenuOpen, setHudMenuOpen] = useState(false);
 
   const liveBadge = mode === 'live' ? 'Live orbit' : 'Simulated playback';
 
@@ -216,6 +219,57 @@ function App() {
 
   const uiClassName = `flex min-h-screen flex-col bg-slate-950 text-slate-100`;
 
+  const overlayOptions = useMemo(
+    () => ({
+      weightlessness: weightlessnessEnabled,
+      terminator: showTerminator,
+      clouds: showClouds,
+      aurora: showAurora,
+      cityLights: showCityLights,
+      reducedMotion,
+    }),
+    [
+      weightlessnessEnabled,
+      showTerminator,
+      showClouds,
+      showAurora,
+      showCityLights,
+      reducedMotion,
+    ]
+  );
+
+  const toggleOverlayOption = useCallback(
+    (key) => {
+      switch (key) {
+        case 'weightlessness':
+          setWeightlessnessEnabled((value) => !value);
+          break;
+        case 'terminator':
+          setShowTerminator((value) => !value);
+          break;
+        case 'clouds':
+          setShowClouds((value) => !value);
+          break;
+        case 'aurora':
+          setShowAurora((value) => !value);
+          break;
+        case 'cityLights':
+          setShowCityLights((value) => !value);
+          break;
+        case 'reducedMotion':
+          setReducedMotion((value) => !value);
+          break;
+        default:
+          break;
+      }
+    },
+    [setShowAurora, setShowCityLights, setShowClouds, setShowTerminator, setWeightlessnessEnabled, setReducedMotion]
+  );
+
+  const handleWeightlessnessIntensityChange = useCallback((value) => {
+    setWeightlessnessIntensity(value);
+  }, []);
+
   return (
     <div className={uiClassName}>
       <header className="border-b border-slate-800/60 bg-slate-950/70 backdrop-blur">
@@ -228,6 +282,17 @@ function App() {
               {liveBadge}
             </span>
             <span>Orbital data via CelesTrak • Time synced in-app</span>
+            <button
+              type="button"
+              className="rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-base text-slate-200 transition hover:border-sky-400/70 hover:text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+              aria-haspopup="dialog"
+              aria-expanded={hudMenuOpen}
+              aria-controls="hud-menu-panel"
+              aria-label={hudMenuOpen ? 'Close HUD menu' : 'Open HUD menu'}
+              onClick={() => setHudMenuOpen((value) => !value)}
+            >
+              ☰
+            </button>
           </div>
         </div>
       </header>
@@ -335,88 +400,17 @@ function App() {
         <div className="mt-8 w-full max-w-6xl">
           <div className="relative">
             <div className="hud-overlay" aria-hidden="true" />
-            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-6">
-              <div className="order-2 lg:order-1 lg:col-start-1">
-                <div className="hud-panel flex w-full justify-center">
-                  <TimeControls onSeek={onSeek} />
-                </div>
+            <div className="flex flex-col gap-4">
+              <div className="hud-panel flex w-full justify-center">
+                <TimeControls onSeek={onSeek} />
               </div>
 
-              <div className="order-1 flex flex-col gap-4 lg:order-2 lg:col-start-2 lg:items-end">
-                <div className="hud-panel flex w-full flex-wrap items-center gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 px-5 py-4 sm:justify-between lg:max-w-sm">
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
-                        checked={weightlessnessEnabled && !reducedMotion}
-                        onChange={(event) => setWeightlessnessEnabled(event.target.checked)}
-                        disabled={reducedMotion}
-                      />
-                      Weightlessness
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={weightlessnessIntensity}
-                      onChange={(event) => setWeightlessnessIntensity(Number(event.target.value))}
-                      disabled={!weightlessnessEnabled || reducedMotion}
-                      aria-label="Weightlessness drift intensity"
-                      className="h-1 w-32 appearance-none rounded-full bg-slate-700 accent-sky-400"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4">
-                    {[
-                      { key: 'showTerminator', label: 'Terminator', value: showTerminator, setter: setShowTerminator },
-                      {
-                        key: 'showClouds',
-                        label: 'Clouds',
-                        value: showClouds,
-                        setter: setShowClouds,
-                        disabled: fastOverlaySuspended,
-                      },
-                      {
-                        key: 'showAurora',
-                        label: 'Aurora',
-                        value: showAurora,
-                        setter: setShowAurora,
-                        disabled: fastOverlaySuspended,
-                      },
-                      { key: 'showCityLights', label: 'City Lights', value: showCityLights, setter: setShowCityLights },
-                      { key: 'reducedMotion', label: 'Reduced Motion', value: reducedMotion, setter: setReducedMotion },
-                    ].map(({ key, label, value, setter, disabled }) => (
-                      <label
-                        key={key}
-                        className={`flex items-center gap-2 text-sm font-medium ${
-                          disabled ? 'text-slate-500' : 'text-slate-200'
-                        }`}
-                        aria-disabled={disabled || undefined}
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:border-slate-700 disabled:bg-slate-900/40"
-                          checked={value}
-                          onChange={(event) => setter(event.target.checked)}
-                          aria-label={label}
-                          disabled={disabled}
-                          title={disabled ? 'Temporarily hidden at high playback speeds' : undefined}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                    {fastOverlaySuspended && (
-                      <p className="w-full text-[0.7rem] text-amber-300/80">
-                        Overlays are temporarily hidden at very high playback speeds to keep the simulation smooth.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {tooltipVisible && (
-                  <div className="hud-panel flex max-w-sm items-start gap-3 rounded-3xl border border-slate-800/60 bg-slate-900/80 px-5 py-4 text-xs text-slate-300">
+              <div className="hud-panel flex max-w-sm flex-col gap-3 rounded-3xl border border-slate-800/60 bg-slate-900/80 px-5 py-4 text-xs text-slate-300">
+                <p className="leading-relaxed text-slate-400">
+                  Use the top-right menu to adjust overlays and accessibility settings.
+                </p>
+                {tooltipVisible ? (
+                  <div className="flex items-start gap-3 text-slate-300">
                     <span className="mt-1 text-sky-300">ⓘ</span>
                     <p className="flex-1 leading-relaxed">{tooltipContent}</p>
                     <button
@@ -428,12 +422,22 @@ function App() {
                       ×
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
         </div>
       </main>
+      <HudMenuPanel
+        open={hudMenuOpen}
+        onClose={() => setHudMenuOpen(false)}
+        options={overlayOptions}
+        toggleOption={toggleOverlayOption}
+        weightlessnessIntensity={weightlessnessIntensity}
+        onWeightlessnessIntensityChange={handleWeightlessnessIntensityChange}
+        fastOverlaySuspended={fastOverlaySuspended}
+        reducedMotion={reducedMotion}
+      />
     </div>
   );
 }
