@@ -332,97 +332,106 @@ function App() {
           </aside>
         </section>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <TimeControls onSeek={onSeek} />
-        </div>
+        <div className="mt-8 w-full max-w-6xl">
+          <div className="relative">
+            <div className="hud-overlay" aria-hidden="true" />
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-6">
+              <div className="order-2 lg:order-1 lg:col-start-1">
+                <div className="hud-panel flex w-full justify-center">
+                  <TimeControls onSeek={onSeek} />
+                </div>
+              </div>
 
-        <div className="mt-6 flex w-full max-w-6xl flex-col gap-4 lg:flex-row">
-          <div className="flex flex-1 flex-wrap items-center gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
-                  checked={weightlessnessEnabled && !reducedMotion}
-                  onChange={(event) => setWeightlessnessEnabled(event.target.checked)}
-                  disabled={reducedMotion}
-                />
-                Weightlessness
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={weightlessnessIntensity}
-                onChange={(event) => setWeightlessnessIntensity(Number(event.target.value))}
-                disabled={!weightlessnessEnabled || reducedMotion}
-                aria-label="Weightlessness drift intensity"
-                className="h-1 w-32 appearance-none rounded-full bg-slate-700 accent-sky-400"
-              />
-            </div>
+              <div className="order-1 flex flex-col gap-4 lg:order-2 lg:col-start-2 lg:items-end">
+                <div className="hud-panel flex w-full flex-wrap items-center gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 px-5 py-4 sm:justify-between lg:max-w-sm">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                        checked={weightlessnessEnabled && !reducedMotion}
+                        onChange={(event) => setWeightlessnessEnabled(event.target.checked)}
+                        disabled={reducedMotion}
+                      />
+                      Weightlessness
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={weightlessnessIntensity}
+                      onChange={(event) => setWeightlessnessIntensity(Number(event.target.value))}
+                      disabled={!weightlessnessEnabled || reducedMotion}
+                      aria-label="Weightlessness drift intensity"
+                      className="h-1 w-32 appearance-none rounded-full bg-slate-700 accent-sky-400"
+                    />
+                  </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              {[
-                { key: 'showTerminator', label: 'Terminator', value: showTerminator, setter: setShowTerminator },
-                {
-                  key: 'showClouds',
-                  label: 'Clouds',
-                  value: showClouds,
-                  setter: setShowClouds,
-                  disabled: fastOverlaySuspended,
-                },
-                {
-                  key: 'showAurora',
-                  label: 'Aurora',
-                  value: showAurora,
-                  setter: setShowAurora,
-                  disabled: fastOverlaySuspended,
-                },
-                { key: 'showCityLights', label: 'City Lights', value: showCityLights, setter: setShowCityLights },
-                { key: 'reducedMotion', label: 'Reduced Motion', value: reducedMotion, setter: setReducedMotion },
-              ].map(({ key, label, value, setter, disabled }) => (
-                <label
-                  key={key}
-                  className={`flex items-center gap-2 text-sm font-medium ${
-                    disabled ? 'text-slate-500' : 'text-slate-200'
-                  }`}
-                  aria-disabled={disabled || undefined}
-                >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:border-slate-700 disabled:bg-slate-900/40"
-                    checked={value}
-                    onChange={(event) => setter(event.target.checked)}
-                    aria-label={label}
-                    disabled={disabled}
-                    title={disabled ? 'Temporarily hidden at high playback speeds' : undefined}
-                  />
-                  {label}
-                </label>
-              ))}
-              {fastOverlaySuspended && (
-                <p className="w-full text-[0.7rem] text-amber-300/80">
-                  Overlays are temporarily hidden at very high playback speeds to keep the simulation smooth.
-                </p>
-              )}
+                  <div className="flex flex-wrap items-center gap-4">
+                    {[
+                      { key: 'showTerminator', label: 'Terminator', value: showTerminator, setter: setShowTerminator },
+                      {
+                        key: 'showClouds',
+                        label: 'Clouds',
+                        value: showClouds,
+                        setter: setShowClouds,
+                        disabled: fastOverlaySuspended,
+                      },
+                      {
+                        key: 'showAurora',
+                        label: 'Aurora',
+                        value: showAurora,
+                        setter: setShowAurora,
+                        disabled: fastOverlaySuspended,
+                      },
+                      { key: 'showCityLights', label: 'City Lights', value: showCityLights, setter: setShowCityLights },
+                      { key: 'reducedMotion', label: 'Reduced Motion', value: reducedMotion, setter: setReducedMotion },
+                    ].map(({ key, label, value, setter, disabled }) => (
+                      <label
+                        key={key}
+                        className={`flex items-center gap-2 text-sm font-medium ${
+                          disabled ? 'text-slate-500' : 'text-slate-200'
+                        }`}
+                        aria-disabled={disabled || undefined}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 disabled:border-slate-700 disabled:bg-slate-900/40"
+                          checked={value}
+                          onChange={(event) => setter(event.target.checked)}
+                          aria-label={label}
+                          disabled={disabled}
+                          title={disabled ? 'Temporarily hidden at high playback speeds' : undefined}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                    {fastOverlaySuspended && (
+                      <p className="w-full text-[0.7rem] text-amber-300/80">
+                        Overlays are temporarily hidden at very high playback speeds to keep the simulation smooth.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {tooltipVisible && (
+                  <div className="hud-panel flex max-w-sm items-start gap-3 rounded-3xl border border-slate-800/60 bg-slate-900/80 px-5 py-4 text-xs text-slate-300">
+                    <span className="mt-1 text-sky-300">ⓘ</span>
+                    <p className="flex-1 leading-relaxed">{tooltipContent}</p>
+                    <button
+                      type="button"
+                      className="text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                      onClick={handleDismissTooltip}
+                      aria-label="Dismiss tip"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          {tooltipVisible && (
-            <div className="flex max-w-sm items-start gap-3 rounded-3xl border border-slate-800/60 bg-slate-900/80 px-5 py-4 text-xs text-slate-300">
-              <span className="mt-1 text-sky-300">ⓘ</span>
-              <p className="flex-1 leading-relaxed">{tooltipContent}</p>
-              <button
-                type="button"
-                className="text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
-                onClick={handleDismissTooltip}
-                aria-label="Dismiss tip"
-              >
-                ×
-              </button>
-            </div>
-          )}
         </div>
       </main>
     </div>
