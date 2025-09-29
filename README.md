@@ -14,7 +14,7 @@ Visit [http://localhost:5173](http://localhost:5173) once the dev server is runn
 ## Features
 
 - 🚀 **Cupola view** – lock the camera to the ISS with gentle sway (optional via reduced-motion toggle)
-- ⏱️ **Time-lapse playback** – scrub ±12 hours, jump between speeds (1× to 600×), and differentiate live vs simulated sessions
+- ⏱️ **Time-lapse playback** – scrub ±12 hours, jump between speeds (1× to 200×), and differentiate live vs simulated sessions
 - 🌗 **Dynamic terminator shader** – day/night lighting tied to real-time solar position with optional city lights
 - 🌌 **Optional overlays** – toggle global clouds, auroral ovals, and city lights; overlays auto-throttle during high-speed playback
 - 🫧 **Weightlessness feel** – floating HUD cards and particle drift when enabled, paused automatically during heavy interaction
@@ -24,7 +24,7 @@ Visit [http://localhost:5173](http://localhost:5173) once the dev server is runn
 ## Controls & UI
 
 - **View mode panel (left)** – switch between *Orbital Map* (full globe control) and *Cupola View* (ISS first person). Cupola view supports subtle head turns via mouse/touch within ±30°.
-- **Time controls (bottom centre)** – play/pause, speed selection (1×, 10×, 60×, 600×), and a timeline scrubber. Keyboard shortcuts: `Space` toggles play, `←/→` adjust ±10 seconds, `Shift + ←/→` adjust ±5 minutes.
+- **Time controls (bottom centre)** – play/pause, speed selection (1×, 10×, 60×, 200×), and a timeline scrubber. Keyboard shortcuts: `Space` toggles play, `←/→` adjust ±10 seconds, `Shift + ←/→` adjust ±5 minutes.
 - **Toggles (right)** – enable weightlessness, terminator shading, clouds, aurora, city lights, and reduced motion. Weightlessness includes an intensity slider (default 0.4) and respects reduced-motion preferences.
 - **Tooltips** – the first run displays a one-line Cupola tip. Dismissals are stored in `localStorage`.
 
@@ -37,7 +37,7 @@ Visit [http://localhost:5173](http://localhost:5173) once the dev server is runn
 
 - Enable *Reduced Motion* to disable Cupola sway, HUD drift, and weightless particles.
 - Weightlessness automatically pauses while the globe is being manipulated to keep controls precise.
-- High-speed playback (>600×) temporarily hides heavy overlays (clouds, aurora) to maintain smooth frame rates.
+- High-speed playback (>200×) temporarily hides heavy overlays (clouds, aurora) to maintain smooth frame rates.
 
 ## Telemetry & Debugging
 
