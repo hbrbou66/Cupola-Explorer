@@ -11,7 +11,7 @@ import {
 
 export type TimeMode = 'live' | 'simulated';
 
-export const PLAYBACK_SPEEDS = [1, 10, 60, 600] as const;
+export const PLAYBACK_SPEEDS = [1, 10, 60, 200] as const;
 const HIGH_SPEED_THRESHOLD = 60;
 const HIGH_SPEED_INTERVAL = 200;
 const NORMAL_INTERVAL = 16;

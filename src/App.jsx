@@ -92,7 +92,7 @@ function App() {
 
   const liveBadge = mode === 'live' ? 'Live orbit' : 'Simulated playback';
 
-  const fastOverlaySuspended = mode === 'simulated' && speed >= 600;
+  const fastOverlaySuspended = mode === 'simulated' && speed >= 200;
 
   const allowWeightlessHud = weightlessnessEnabled && !reducedMotion && !isInteracting;
 
@@ -151,7 +151,7 @@ function App() {
     }
     lastTrackUpdateRef.current = now;
 
-    const stepSeconds = speed >= 600 ? 90 : speed >= 60 ? 45 : 15;
+    const stepSeconds = speed >= 200 ? 90 : speed >= 60 ? 45 : 15;
     const trail = buildGroundTrack(satrec, now, 360, stepSeconds);
     const future = fastPlayback ? [] : buildFutureTrack(satrec, now, 30, 30);
     setTrailPoints(trail);
