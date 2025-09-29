@@ -42,3 +42,13 @@ a {
 .weightless-hud .weightless-float.delay-150 {
   animation-delay: 0.75s;
 }
+
+@layer components {
+  .hud-panel {
+    @apply pointer-events-auto relative z-10;
+  }
+
+  .hud-overlay {
+    @apply pointer-events-none absolute inset-0 -z-10 rounded-3xl border border-slate-800/60 bg-slate-900/40 backdrop-blur;
+  }
+}
