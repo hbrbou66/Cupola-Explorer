@@ -282,7 +282,11 @@ const HudMenuPanel = ({
           hidden={activeTab !== 'education'}
           className="hud-menu-tabpanel"
         >
-          <EducationModule issSpeed={issSpeed} onFastTimeline={onFastTimeline} />
+          <EducationModule
+            issSpeed={issSpeed}
+            onFastTimeline={onFastTimeline}
+            onCloseMenu={onClose}
+          />
         </div>
 
         <div className="hud-menu-actions">
