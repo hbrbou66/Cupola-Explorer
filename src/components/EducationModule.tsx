@@ -13,6 +13,7 @@ interface QuizQuestion {
 interface EducationModuleProps {
   issSpeed: number;
   onFastTimeline: (speedMultiplier?: number) => void;
+  onCloseMenu: () => void;
 }
 
 const ALTITUDE_ESTIMATE_KM = 420;
@@ -53,7 +54,7 @@ const lessonCards: Array<{
 const formatNumber = (value: number, fractionDigits: number) =>
   Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: fractionDigits }) : '—';
 
-const EducationModule = ({ issSpeed, onFastTimeline }: EducationModuleProps) => {
+const EducationModule = ({ issSpeed, onFastTimeline, onCloseMenu }: EducationModuleProps) => {
   const [activeLesson, setActiveLesson] = useState<LessonKey | null>(null);
   const [speedUnits, setSpeedUnits] = useState<'kmh' | 'mph' | 'kms'>('kmh');
   const [quizIndex, setQuizIndex] = useState(0);
@@ -229,7 +230,11 @@ const EducationModule = ({ issSpeed, onFastTimeline }: EducationModuleProps) => 
         </div>
         <button
           type="button"
-          onClick={() => triggerTimelineDemo(demoSpeed)}
+          onClick={() => {
+            triggerTimelineDemo(demoSpeed);
+            setActiveLesson(null);
+            onCloseMenu();
+          }}
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-400/70 bg-amber-500/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-100 transition hover:border-amber-300/70"
         >
           ▶ Fast timeline demo
