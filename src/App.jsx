@@ -14,7 +14,6 @@ import { useTimeStore } from './state/timeStore.tsx';
 import './styles/hud-menu.css';
 
 const WEIGHTLESS_DEFAULT = 0.4;
-const TOOLTIP_STORAGE_KEY = 'cupola-tooltips-dismissed';
 const REDUCED_MOTION_KEY = 'cupola-reduced-motion';
 
 const formatCoordinate = (value, type) => {
@@ -89,7 +88,6 @@ function App() {
     }
     return false;
   });
-  const [tooltipDismissed, setTooltipDismissed] = usePersistentState(TOOLTIP_STORAGE_KEY, false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [hudMenuOpen, setHudMenuOpen] = useState(false);
 
@@ -98,12 +96,6 @@ function App() {
   const fastOverlaySuspended = mode === 'simulated' && speed >= 200;
 
   const allowWeightlessHud = weightlessnessEnabled && !reducedMotion && !isInteracting;
-
-  const tooltipVisible = !tooltipDismissed;
-  const tooltipContent =
-    'Tip: Switch to Cupola View for an astronaut-eye perspective. Drag to pan in Map View.';
-
-  const handleDismissTooltip = () => setTooltipDismissed(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -426,22 +418,6 @@ function App() {
                 <TimeControls onSeek={onSeek} />
               </div>
 
-              {tooltipVisible ? (
-                <div className="hud-panel flex max-w-sm flex-col gap-3 rounded-3xl border border-slate-800/60 bg-slate-900/80 px-5 py-4 text-xs text-slate-300">
-                  <div className="flex items-start gap-3 text-slate-300">
-                    <span className="mt-1 text-sky-300">ⓘ</span>
-                    <p className="flex-1 leading-relaxed">{tooltipContent}</p>
-                    <button
-                      type="button"
-                      className="text-slate-500 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
-                      onClick={handleDismissTooltip}
-                      aria-label="Dismiss tip"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>
