@@ -16,7 +16,10 @@ export interface IssGeodeticPosition {
   latitude: number;
   longitude: number;
   altitude: number;
+  speedKmh: number;
 }
+
+export const FALLBACK_SPEED_KMH = 27600;
 
 export const EARTH_RADIUS_KM = 6371;
 export const EARTH_RADIUS_SCENE = 5;
@@ -192,6 +195,10 @@ export const getIssPositionAt = (satrec: SimpleSatRec, timestamp: number): IssGe
   );
 
   const radius = satrec.semiMajorAxis * (1 - eccentricity * Math.cos(eccentricAnomaly));
+  const safeRadius = radius > 0 ? radius : satrec.semiMajorAxis;
+  const visVivaTerm = MU * (2 / safeRadius - 1 / satrec.semiMajorAxis);
+  const speedKms = visVivaTerm > 0 ? Math.sqrt(visVivaTerm) : 0;
+  const speedKmh = Number.isFinite(speedKms) && speedKms > 0 ? speedKms * 3600 : FALLBACK_SPEED_KMH;
   const argumentOfLatitude = normalizeAngle(satrec.argPerigee + trueAnomaly);
 
   const cosU = Math.cos(argumentOfLatitude);
@@ -212,6 +219,7 @@ export const getIssPositionAt = (satrec: SimpleSatRec, timestamp: number): IssGe
     latitude: THREE.MathUtils.radToDeg(geodetic.latitude),
     longitude: THREE.MathUtils.radToDeg(geodetic.longitude),
     altitude: geodetic.altitude,
+    speedKmh,
   };
 };
 
@@ -221,6 +229,17 @@ export const getScenePositionAt = (satrec: SimpleSatRec, timestamp: number) => {
   const radius = scaleToScene(geo.altitude);
   const vector = toSceneVector(geo.latitude, geo.longitude, radius);
   return { ...geo, vector };
+};
+
+export const getIssSpeed = (satrec: SimpleSatRec | null, timestamp: number) => {
+  if (!satrec) {
+    return FALLBACK_SPEED_KMH;
+  }
+  const state = getIssPositionAt(satrec, timestamp);
+  if (!state) {
+    return FALLBACK_SPEED_KMH;
+  }
+  return state.speedKmh;
 };
 
 export const buildGroundTrack = (
