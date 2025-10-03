@@ -92,6 +92,8 @@ function Explorer() {
   const [isInteracting, setIsInteracting] = useState(false);
   const [hudMenuOpen, setHudMenuOpen] = useState(false);
 
+  const liveBadge = mode === 'live' ? 'Live orbit' : 'Simulated playback';
+
   const fastOverlaySuspended = mode === 'simulated' && speed >= 200;
 
   const allowWeightlessHud = weightlessnessEnabled && !reducedMotion && !isInteracting;
@@ -216,17 +218,6 @@ function Explorer() {
       ? 'Tracking nominal. Streaming live orbit data.'
       : 'Simulated playback active. Speed controls adjust orbit progression.';
 
-  const orbitStatus = error ? 'cached' : 'nominal';
-  const isLiveMode = mode === 'live';
-  const orbitBadgeLabel =
-    orbitStatus === 'cached' ? 'LIVE ORBIT (cached)' : isLiveMode ? 'LIVE ORBIT' : 'SIMULATED PLAYBACK';
-  const orbitBadgeDescription =
-    orbitStatus === 'cached'
-      ? 'Using cached orbital elements while updates retry.'
-      : isLiveMode
-        ? 'Streaming orbit data via CelesTrak.'
-        : 'Timeline controls active — adjust playback to explore past paths.';
-
   const uiClassName = `flex min-h-screen flex-col bg-slate-950 text-slate-100`;
 
   const overlayOptions = useMemo(
@@ -297,7 +288,12 @@ function Explorer() {
             </p>
           </div>
           <div className="flex flex-1 items-center justify-center">
-            <span className="hidden text-slate-400 sm:inline">Orbital data via CelesTrak • Time synced in-app</span>
+            <div className="flex flex-wrap items-center justify-center gap-3 text-[0.75rem] text-slate-300 sm:text-xs">
+              <span className="rounded-full border border-sky-500/50 bg-sky-900/40 px-4 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-sky-200 shadow-[0_0_25px_rgba(56,189,248,0.25)]">
+                {liveBadge}
+              </span>
+              <span className="hidden text-slate-400 sm:inline">Orbital data via CelesTrak • Time synced in-app</span>
+            </div>
           </div>
           <div className="flex items-center justify-end">
             <button
@@ -331,7 +327,7 @@ function Explorer() {
         allowWeightlessHud ? 'weightless-hud' : ''
       }`}>
         <section className="flex w-full max-w-6xl flex-1 flex-col gap-6 lg:flex-row">
-          <div className="relative flex-1 overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/60 p-3 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
+          <div className="flex-1 overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/60 p-3 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
             <ISSGlobe
               viewMode={viewMode}
               onViewInteraction={onInteractionChange}
@@ -349,14 +345,6 @@ function Explorer() {
               interactionPaused={isInteracting}
               fastOverlaySuspended={fastOverlaySuspended}
             />
-            <div className="pointer-events-none absolute bottom-4 left-4 z-20 max-w-[85%] sm:max-w-xs">
-              <div className="flex flex-col gap-1 rounded-xl border border-sky-500/60 bg-sky-900/70 px-3 py-2 text-sky-100 shadow-lg backdrop-blur">
-                <span className="text-[0.6rem] font-semibold uppercase tracking-[0.35em] sm:text-[0.7rem]">
-                  {orbitBadgeLabel}
-                </span>
-                <span className="text-[0.65rem] text-sky-100/80 sm:text-xs">{orbitBadgeDescription}</span>
-              </div>
-            </div>
           </div>
 
           <aside className="flex w-full max-w-lg flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6">
