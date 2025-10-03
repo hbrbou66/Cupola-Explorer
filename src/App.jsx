@@ -258,6 +258,10 @@ function App() {
     ]
   );
 
+  const closeHudMenu = useCallback(() => {
+    setHudMenuOpen(false);
+  }, []);
+
   const toggleOverlayOption = useCallback(
     (key) => {
       switch (key) {
@@ -500,7 +504,7 @@ function App() {
       </main>
       <HudMenuPanel
         open={hudMenuOpen}
-        onClose={() => setHudMenuOpen(false)}
+        onClose={closeHudMenu}
         options={overlayOptions}
         toggleOption={toggleOverlayOption}
         weightlessnessIntensity={weightlessnessIntensity}
