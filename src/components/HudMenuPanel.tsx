@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import EducationModule from './EducationModule.tsx';
 
 type OverlayOptionKey =
   | 'weightlessness'
@@ -19,6 +20,8 @@ interface HudMenuPanelProps {
   onWeightlessnessIntensityChange: (value: number) => void;
   fastOverlaySuspended: boolean;
   reducedMotion: boolean;
+  issSpeed: number;
+  onFastTimeline: (speedMultiplier?: number) => void;
 }
 
 const FOCUSABLE_SELECTORS =
@@ -33,14 +36,19 @@ const HudMenuPanel = ({
   onWeightlessnessIntensityChange,
   fastOverlaySuspended,
   reducedMotion,
+  issSpeed,
+  onFastTimeline,
 }: HudMenuPanelProps) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const [activeTab, setActiveTab] = useState<'overlays' | 'education'>('overlays');
 
   useEffect(() => {
     if (!open) {
       return undefined;
     }
+
+    setActiveTab('overlays');
 
     previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
 
@@ -151,86 +159,131 @@ const HudMenuPanel = ({
           </button>
         </header>
 
-        <section className="hud-menu-section" aria-labelledby="hud-menu-experience">
-          <h3 id="hud-menu-experience">Visual Experience</h3>
-          <label className={`hud-menu-toggle${reducedMotion ? ' is-disabled' : ''}`}>
-            <input
-              type="checkbox"
-              checked={options.weightlessness}
-              onChange={() => toggleOption('weightlessness')}
-              disabled={reducedMotion}
-            />
-            <span>
-              <span className="hud-menu-toggle-label">Weightlessness</span>
-              <span className="hud-menu-toggle-description">
-                Enable gentle cockpit sway for the Cupola view.
-              </span>
-            </span>
-          </label>
-          <label className="hud-menu-slider">
-            <span>Drift intensity</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={weightlessnessIntensity}
-              onChange={(event) => onWeightlessnessIntensityChange(Number(event.target.value))}
-              disabled={!options.weightlessness || reducedMotion}
-            />
-          </label>
-          {reducedMotion && (
-            <p className="hud-menu-note">
-              Weightlessness is disabled while Reduced Motion is active.
-            </p>
-          )}
-        </section>
+        <nav className="hud-menu-tabs" role="tablist" aria-label="HUD menu categories">
+          <button
+            type="button"
+            role="tab"
+            id="hud-tab-overlays"
+            aria-controls="hud-panel-overlays"
+            aria-selected={activeTab === 'overlays'}
+            tabIndex={activeTab === 'overlays' ? 0 : -1}
+            className={`hud-menu-tab${activeTab === 'overlays' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('overlays')}
+          >
+            Overlays
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="hud-tab-education"
+            aria-controls="hud-panel-education"
+            aria-selected={activeTab === 'education'}
+            tabIndex={activeTab === 'education' ? 0 : -1}
+            className={`hud-menu-tab${activeTab === 'education' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('education')}
+          >
+            Education
+          </button>
+        </nav>
 
-        <section className="hud-menu-section" aria-labelledby="hud-menu-overlays">
-          <h3 id="hud-menu-overlays">Earth overlays</h3>
-          <div className="hud-menu-grid">
-            {overlayOptions.map(({ key, label, description, disabled }) => (
-              <label
-                key={key}
-                className={`hud-menu-toggle${disabled ? ' is-disabled' : ''}`}
-                aria-disabled={disabled || undefined}
-              >
-                <input
-                  type="checkbox"
-                  checked={options[key]}
-                  onChange={() => toggleOption(key)}
-                  disabled={disabled}
-                />
-                <span>
-                  <span className="hud-menu-toggle-label">{label}</span>
-                  <span className="hud-menu-toggle-description">{description}</span>
+        <div
+          id="hud-panel-overlays"
+          role="tabpanel"
+          aria-labelledby="hud-tab-overlays"
+          hidden={activeTab !== 'overlays'}
+          className="hud-menu-tabpanel"
+        >
+          <section className="hud-menu-section" aria-labelledby="hud-menu-experience">
+            <h3 id="hud-menu-experience">Visual Experience</h3>
+            <label className={`hud-menu-toggle${reducedMotion ? ' is-disabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={options.weightlessness}
+                onChange={() => toggleOption('weightlessness')}
+                disabled={reducedMotion}
+              />
+              <span>
+                <span className="hud-menu-toggle-label">Weightlessness</span>
+                <span className="hud-menu-toggle-description">
+                  Enable gentle cockpit sway for the Cupola view.
                 </span>
-              </label>
-            ))}
-          </div>
-          {fastOverlaySuspended && (
-            <p className="hud-menu-note">
-              Some overlays are temporarily paused at very high playback speeds to keep the simulation responsive.
-            </p>
-          )}
-        </section>
-
-        <section className="hud-menu-section" aria-labelledby="hud-menu-accessibility">
-          <h3 id="hud-menu-accessibility">Motion &amp; accessibility</h3>
-          <label className="hud-menu-toggle">
-            <input
-              type="checkbox"
-              checked={options.reducedMotion}
-              onChange={() => toggleOption('reducedMotion')}
-            />
-            <span>
-              <span className="hud-menu-toggle-label">Reduced Motion</span>
-              <span className="hud-menu-toggle-description">
-                Simplify animations and disable weightlessness drift.
               </span>
-            </span>
-          </label>
-        </section>
+            </label>
+            <label className="hud-menu-slider">
+              <span>Drift intensity</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={weightlessnessIntensity}
+                onChange={(event) => onWeightlessnessIntensityChange(Number(event.target.value))}
+                disabled={!options.weightlessness || reducedMotion}
+              />
+            </label>
+            {reducedMotion && (
+              <p className="hud-menu-note">
+                Weightlessness is disabled while Reduced Motion is active.
+              </p>
+            )}
+          </section>
+
+          <section className="hud-menu-section" aria-labelledby="hud-menu-overlays">
+            <h3 id="hud-menu-overlays">Earth overlays</h3>
+            <div className="hud-menu-grid">
+              {overlayOptions.map(({ key, label, description, disabled }) => (
+                <label
+                  key={key}
+                  className={`hud-menu-toggle${disabled ? ' is-disabled' : ''}`}
+                  aria-disabled={disabled || undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={options[key]}
+                    onChange={() => toggleOption(key)}
+                    disabled={disabled}
+                  />
+                  <span>
+                    <span className="hud-menu-toggle-label">{label}</span>
+                    <span className="hud-menu-toggle-description">{description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {fastOverlaySuspended && (
+              <p className="hud-menu-note">
+                Some overlays are temporarily paused at very high playback speeds to keep the simulation responsive.
+              </p>
+            )}
+          </section>
+
+          <section className="hud-menu-section" aria-labelledby="hud-menu-accessibility">
+            <h3 id="hud-menu-accessibility">Motion &amp; accessibility</h3>
+            <label className="hud-menu-toggle">
+              <input
+                type="checkbox"
+                checked={options.reducedMotion}
+                onChange={() => toggleOption('reducedMotion')}
+              />
+              <span>
+                <span className="hud-menu-toggle-label">Reduced Motion</span>
+                <span className="hud-menu-toggle-description">
+                  Simplify animations and disable weightlessness drift.
+                </span>
+              </span>
+            </label>
+          </section>
+        </div>
+
+        <div
+          id="hud-panel-education"
+          role="tabpanel"
+          aria-labelledby="hud-tab-education"
+          hidden={activeTab !== 'education'}
+          className="hud-menu-tabpanel"
+        >
+          <EducationModule issSpeed={issSpeed} onFastTimeline={onFastTimeline} />
+        </div>
 
         <div className="hud-menu-actions">
           <button type="button" onClick={onClose} className="hud-menu-primary">

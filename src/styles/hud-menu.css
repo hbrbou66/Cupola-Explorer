@@ -42,6 +42,40 @@
   color: #7dd3fc;
 }
 
+.hud-menu-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.hud-menu-tab {
+  border-radius: 18px;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  padding: 0.65rem 0.75rem;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  cursor: pointer;
+}
+
+.hud-menu-tab:hover,
+.hud-menu-tab:focus-visible {
+  border-color: rgba(125, 211, 252, 0.6);
+  color: #e0f2fe;
+  outline: none;
+}
+
+.hud-menu-tab.is-active {
+  border-color: rgba(56, 189, 248, 0.7);
+  background: rgba(56, 189, 248, 0.2);
+  color: #f8fafc;
+}
+
 .hud-menu-close {
   border: 1px solid rgba(148, 163, 184, 0.25);
   background: rgba(15, 23, 42, 0.6);
@@ -146,6 +180,12 @@
 .hud-menu-grid {
   display: grid;
   gap: 0.75rem;
+}
+
+.hud-menu-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .hud-menu-note {

@@ -4,6 +4,7 @@ import TimeControls from './components/TimeControls.jsx';
 import HudMenuPanel from './components/HudMenuPanel.tsx';
 import {
   FALLBACK_TLE,
+  FALLBACK_SPEED_KMH,
   buildFutureTrack,
   buildGroundTrack,
   createSatrec,
@@ -29,6 +30,13 @@ const formatAltitude = (value) => {
     return '—';
   }
   return `${value.toFixed(1)} km`;
+};
+
+const formatSpeed = (value) => {
+  if (value == null || Number.isNaN(value)) {
+    return '—';
+  }
+  return `${Math.round(value).toLocaleString()} km/h`;
 };
 
 const usePersistentState = (key, defaultValue) => {
@@ -64,9 +72,14 @@ function App() {
     currentTime,
     mode,
     speed,
+    isPlaying,
     seekTo,
     stepBy,
     togglePlay,
+    setSpeed,
+    play,
+    pause,
+    setMode,
   } = useTimeStore();
 
   const [satrec, setSatrec] = useState(null);
@@ -135,6 +148,8 @@ function App() {
   }, [satrec, currentTime]);
 
   const lastTrackUpdateRef = useRef(0);
+  const fastTimelineTimeoutRef = useRef(null);
+  const fastTimelineStateRef = useRef(null);
 
   useEffect(() => {
     if (!satrec) return;
@@ -152,6 +167,12 @@ function App() {
     setTrailPoints(trail);
     setFuturePoints(future);
   }, [satrec, currentTime, speed, mode]);
+
+  useEffect(() => () => {
+    if (fastTimelineTimeoutRef.current) {
+      clearTimeout(fastTimelineTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -185,12 +206,19 @@ function App() {
     }
   }, [reducedMotion]);
 
-  const telemetry = useMemo(() => ({
-    latitude: formatCoordinate(issPosition?.latitude, 'lat'),
-    longitude: formatCoordinate(issPosition?.longitude, 'lon'),
-    altitude: formatAltitude(issPosition?.altitude),
-    tleAge: tleTimestamp ? new Date(tleTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
-  }), [issPosition, tleTimestamp]);
+  const telemetry = useMemo(() => {
+    const speedValue = issPosition?.speedKmh ?? FALLBACK_SPEED_KMH;
+    return {
+      latitude: formatCoordinate(issPosition?.latitude, 'lat'),
+      longitude: formatCoordinate(issPosition?.longitude, 'lon'),
+      altitude: formatAltitude(issPosition?.altitude),
+      speed: formatSpeed(speedValue),
+      speedKmh: speedValue,
+      tleAge: tleTimestamp
+        ? new Date(tleTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '—',
+    };
+  }, [issPosition, tleTimestamp]);
 
   const onSeek = useCallback(
     (timestamp) => {
@@ -256,6 +284,50 @@ function App() {
       }
     },
     [setShowAurora, setShowCityLights, setShowClouds, setShowTerminator, setWeightlessnessEnabled, setReducedMotion]
+  );
+
+  const handleFastTimelineDemo = useCallback(
+    (targetSpeed = 200) => {
+      const allowedSpeeds = new Set([1, 10, 60, 200]);
+      const playbackSpeed = allowedSpeeds.has(targetSpeed) ? targetSpeed : 200;
+
+      if (fastTimelineTimeoutRef.current) {
+        clearTimeout(fastTimelineTimeoutRef.current);
+        fastTimelineTimeoutRef.current = null;
+      }
+
+      fastTimelineStateRef.current = {
+        mode,
+        speed,
+        wasPlaying: isPlaying,
+      };
+
+      if (mode === 'live') {
+        setMode('simulated');
+      }
+
+      setSpeed(playbackSpeed);
+      play();
+
+      fastTimelineTimeoutRef.current = window.setTimeout(() => {
+        const previous = fastTimelineStateRef.current;
+        fastTimelineStateRef.current = null;
+        if (!previous) {
+          return;
+        }
+        if (previous.mode === 'live') {
+          setMode('live');
+          return;
+        }
+        setSpeed(previous.speed);
+        if (previous.wasPlaying) {
+          play();
+        } else {
+          pause();
+        }
+      }, 8000);
+    },
+    [mode, speed, isPlaying, setMode, setSpeed, play, pause]
   );
 
   const handleWeightlessnessIntensityChange = useCallback((value) => {
@@ -387,6 +459,10 @@ function App() {
                   <dd className="font-mono text-base text-sky-200">{telemetry.altitude}</dd>
                 </div>
                 <div className="rounded-xl bg-slate-900/70 px-4 py-3">
+                  <dt className="text-slate-400">Speed</dt>
+                  <dd className="font-mono text-base text-sky-200">{telemetry.speed}</dd>
+                </div>
+                <div className="rounded-xl bg-slate-900/70 px-4 py-3">
                   <dt className="text-slate-400">TLE Updated</dt>
                   <dd className="font-mono text-base text-sky-200">{telemetry.tleAge}</dd>
                 </div>
@@ -431,6 +507,8 @@ function App() {
         onWeightlessnessIntensityChange={handleWeightlessnessIntensityChange}
         fastOverlaySuspended={fastOverlaySuspended}
         reducedMotion={reducedMotion}
+        issSpeed={telemetry.speedKmh}
+        onFastTimeline={handleFastTimelineDemo}
       />
     </div>
   );
