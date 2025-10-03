@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import EducationModule from './EducationModule.tsx';
+import { useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type OverlayOptionKey =
   | 'weightlessness'
@@ -21,7 +21,6 @@ interface HudMenuPanelProps {
   fastOverlaySuspended: boolean;
   reducedMotion: boolean;
   issSpeed: number;
-  onFastTimeline: (speedMultiplier?: number) => void;
 }
 
 const FOCUSABLE_SELECTORS =
@@ -37,18 +36,15 @@ const HudMenuPanel = ({
   fastOverlaySuspended,
   reducedMotion,
   issSpeed,
-  onFastTimeline,
 }: HudMenuPanelProps) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
-  const [activeTab, setActiveTab] = useState<'overlays' | 'education'>('overlays');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) {
       return undefined;
     }
-
-    setActiveTab('overlays');
 
     previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
 
@@ -159,40 +155,7 @@ const HudMenuPanel = ({
           </button>
         </header>
 
-        <nav className="hud-menu-tabs" role="tablist" aria-label="HUD menu categories">
-          <button
-            type="button"
-            role="tab"
-            id="hud-tab-overlays"
-            aria-controls="hud-panel-overlays"
-            aria-selected={activeTab === 'overlays'}
-            tabIndex={activeTab === 'overlays' ? 0 : -1}
-            className={`hud-menu-tab${activeTab === 'overlays' ? ' is-active' : ''}`}
-            onClick={() => setActiveTab('overlays')}
-          >
-            Overlays
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="hud-tab-education"
-            aria-controls="hud-panel-education"
-            aria-selected={activeTab === 'education'}
-            tabIndex={activeTab === 'education' ? 0 : -1}
-            className={`hud-menu-tab${activeTab === 'education' ? ' is-active' : ''}`}
-            onClick={() => setActiveTab('education')}
-          >
-            Education
-          </button>
-        </nav>
-
-        <div
-          id="hud-panel-overlays"
-          role="tabpanel"
-          aria-labelledby="hud-tab-overlays"
-          hidden={activeTab !== 'overlays'}
-          className="hud-menu-tabpanel"
-        >
+        <div className="hud-menu-tabpanel">
           <section className="hud-menu-section" aria-labelledby="hud-menu-experience">
             <h3 id="hud-menu-experience">Visual Experience</h3>
             <label className={`hud-menu-toggle${reducedMotion ? ' is-disabled' : ''}`}>
@@ -273,20 +236,23 @@ const HudMenuPanel = ({
               </span>
             </label>
           </section>
-        </div>
 
-        <div
-          id="hud-panel-education"
-          role="tabpanel"
-          aria-labelledby="hud-tab-education"
-          hidden={activeTab !== 'education'}
-          className="hud-menu-tabpanel"
-        >
-          <EducationModule
-            issSpeed={issSpeed}
-            onFastTimeline={onFastTimeline}
-            onCloseMenu={onClose}
-          />
+          <section className="hud-menu-section" aria-labelledby="hud-menu-education">
+            <h3 id="hud-menu-education">Education</h3>
+            <p className="text-[0.8rem] text-slate-300">
+              Explore lessons and quizzes in the full Education hangar.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate('/education', { state: { issSpeed } });
+              }}
+              className="rounded-2xl border border-sky-500/40 bg-sky-500/15 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-sky-100 transition hover:border-sky-300/70 hover:bg-sky-500/25"
+            >
+              Go to Education
+            </button>
+          </section>
         </div>
 
         <div className="hud-menu-actions">

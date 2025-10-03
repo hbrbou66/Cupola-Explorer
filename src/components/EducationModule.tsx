@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { EARTH_RADIUS_KM } from '../utils/iss.ts';
+import { EARTH_RADIUS_KM, FALLBACK_SPEED_KMH } from '../utils/iss.ts';
 
 type LessonKey = 'speed' | 'sunsets';
 
@@ -11,9 +11,9 @@ interface QuizQuestion {
 }
 
 interface EducationModuleProps {
-  issSpeed: number;
-  onFastTimeline: (speedMultiplier?: number) => void;
-  onCloseMenu: () => void;
+  issSpeed?: number;
+  onFastTimeline?: (speedMultiplier?: number) => void;
+  onCloseMenu?: () => void;
 }
 
 const ALTITUDE_ESTIMATE_KM = 420;
@@ -54,7 +54,11 @@ const lessonCards: Array<{
 const formatNumber = (value: number, fractionDigits: number) =>
   Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: fractionDigits }) : '—';
 
-const EducationModule = ({ issSpeed, onFastTimeline, onCloseMenu }: EducationModuleProps) => {
+const EducationModule = ({
+  issSpeed = FALLBACK_SPEED_KMH,
+  onFastTimeline,
+  onCloseMenu,
+}: EducationModuleProps) => {
   const [activeLesson, setActiveLesson] = useState<LessonKey | null>(null);
   const [speedUnits, setSpeedUnits] = useState<'kmh' | 'mph' | 'kms'>('kmh');
   const [quizIndex, setQuizIndex] = useState(0);
@@ -116,7 +120,7 @@ const EducationModule = ({ issSpeed, onFastTimeline, onCloseMenu }: EducationMod
   const triggerTimelineDemo = (speed: number) => {
     setDemoSpeed(speed);
     setTimelineStatus(`Timeline accelerated to ${speed}× for a day/night sprint.`);
-    onFastTimeline(speed);
+    onFastTimeline?.(speed);
   };
 
   const renderLessonList = () => (
@@ -233,7 +237,7 @@ const EducationModule = ({ issSpeed, onFastTimeline, onCloseMenu }: EducationMod
           onClick={() => {
             triggerTimelineDemo(demoSpeed);
             setActiveLesson(null);
-            onCloseMenu();
+            onCloseMenu?.();
           }}
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-400/70 bg-amber-500/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-100 transition hover:border-amber-300/70"
         >
