@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo } from 'react';
+import { Component, Suspense, type ReactNode, useEffect, useMemo } from 'react';
 import type { Lesson } from '../../data/lessons';
 import LessonSceneController from '../LessonSceneController';
 import LessonModel from './LessonModel';
@@ -430,6 +430,46 @@ const MissingModelFallback = () => (
   </div>
 );
 
+interface LessonVisualErrorBoundaryProps {
+  fallback: ReactNode;
+  onError?: (error: Error, info: { componentStack: string }) => void;
+  children: ReactNode;
+  resetKey?: string | number;
+}
+
+interface LessonVisualErrorBoundaryState {
+  hasError: boolean;
+}
+
+class LessonVisualErrorBoundary extends Component<
+  LessonVisualErrorBoundaryProps,
+  LessonVisualErrorBoundaryState
+> {
+  state: LessonVisualErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): LessonVisualErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    this.props.onError?.(error, info);
+  }
+
+  componentDidUpdate(prevProps: LessonVisualErrorBoundaryProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
 const LessonVisual = ({ lesson }: LessonVisualProps) => {
   const config = useMemo(() => mergeSceneConfig(sceneOverrides[lesson.visual]), [lesson.visual]);
   const hasValidModel = typeof lesson.model === 'string' && lesson.model.trim().length > 0;
@@ -449,16 +489,31 @@ const LessonVisual = ({ lesson }: LessonVisualProps) => {
       style={{ backgroundImage: `radial-gradient(140% 120% at 50% 0%, ${config.background}66, rgba(2,6,23,0.92))` }}
     >
       {hasValidModel ? (
-        <Suspense fallback={<CanvasFallback />}>
-          <LessonSceneController lessonId={lesson.id} config={config}>
-            <LessonModel
-              modelPath={lesson.model}
-              baseScale={config.model.scale}
-              position={config.model.position}
-              rotation={config.model.rotation}
-            />
-          </LessonSceneController>
-        </Suspense>
+        <LessonVisualErrorBoundary
+          key={lesson.id}
+          resetKey={lesson.model}
+          fallback={<MissingModelFallback />}
+          onError={(error, info) => {
+            console.error('Failed to load lesson visual; rendering fallback.', {
+              error,
+              info,
+              lessonId: lesson.id,
+              lessonTitle: lesson.title,
+              modelPath: lesson.model,
+            });
+          }}
+        >
+          <Suspense fallback={<CanvasFallback />}>
+            <LessonSceneController lessonId={lesson.id} config={config}>
+              <LessonModel
+                modelPath={lesson.model}
+                baseScale={config.model.scale}
+                position={config.model.position}
+                rotation={config.model.rotation}
+              />
+            </LessonSceneController>
+          </Suspense>
+        </LessonVisualErrorBoundary>
       ) : (
         <MissingModelFallback />
       )}
