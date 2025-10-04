@@ -5,6 +5,11 @@ import {
   LESSON_PROGRESS_STORAGE_KEY,
   type ChallengeRankRecord,
 } from '../utils/storageKeys.ts';
+import type {
+  EducationProgress as TrackerProgress,
+  LessonProgress as TrackerLessonProgress,
+  QuizProgress as TrackerQuizProgress,
+} from '../utils/educationProgress.ts';
 
 export interface LessonProgressEntry {
   viewed: boolean;
@@ -22,6 +27,9 @@ export interface EducationProgress {
   lastUpdated: string;
   lessonStats: Record<number, LessonProgressEntry>;
   challengeHistory: ChallengeRankRecord[];
+  lessons?: TrackerLessonProgress[];
+  quizzes?: TrackerQuizProgress[];
+  totalXP?: number;
 }
 
 const LEGACY_CHALLENGE_KEY = 'cupola-challenge-rank';
@@ -35,6 +43,9 @@ const DEFAULT_PROGRESS: EducationProgress = {
   lastUpdated: new Date(0).toISOString(),
   lessonStats: {},
   challengeHistory: [],
+  lessons: [],
+  quizzes: [],
+  totalXP: 0,
 };
 
 const toLessonKey = (lessonId: number) => `lesson-${lessonId.toString().padStart(2, '0')}`;
@@ -102,23 +113,38 @@ const migrateStoredProgress = (raw: string | null): EducationProgress => {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<EducationProgress> | Record<string, LessonProgressEntry> | null;
+    const parsed = JSON.parse(raw) as
+      | (Partial<EducationProgress> & Partial<TrackerProgress>)
+      | Record<string, LessonProgressEntry>
+      | null;
     if (!parsed) {
       return DEFAULT_PROGRESS;
     }
 
-    if ('lessonStats' in parsed || 'completedLessons' in parsed || 'achievements' in parsed) {
-      const candidate = parsed as Partial<EducationProgress>;
+    if (
+      'lessonStats' in parsed ||
+      'completedLessons' in parsed ||
+      'achievements' in parsed ||
+      'lessons' in parsed ||
+      'quizzes' in parsed
+    ) {
+      const candidate = parsed as Partial<EducationProgress> & Partial<TrackerProgress>;
       const lessonStats = candidate.lessonStats ? { ...candidate.lessonStats } : {};
       const challengeHistory = Array.isArray(candidate.challengeHistory)
         ? [...candidate.challengeHistory]
         : [];
+      const lessons = Array.isArray(candidate.lessons) ? [...candidate.lessons] : [];
+      const quizzes = Array.isArray(candidate.quizzes) ? [...candidate.quizzes] : [];
+      const totalXP = Number.isFinite(candidate.totalXP) ? Number(candidate.totalXP) : 0;
 
       return {
         ...DEFAULT_PROGRESS,
         ...candidate,
         lessonStats,
         challengeHistory,
+        lessons,
+        quizzes,
+        totalXP,
       };
     }
 
@@ -208,6 +234,9 @@ const deriveProgress = (base: EducationProgress): EducationProgress => {
   const lessonStats = base.lessonStats ?? {};
   const challengeHistory = base.challengeHistory ?? [];
   const completedLessons = new Set<string>(base.completedLessons ?? []);
+  const lessons = Array.isArray(base.lessons) ? base.lessons : [];
+  const quizzes = Array.isArray(base.quizzes) ? base.quizzes : [];
+  const totalXP = Number.isFinite(base.totalXP) ? Number(base.totalXP) : 0;
 
   Object.entries(lessonStats).forEach(([lessonKey, entry]) => {
     const lessonId = Number(lessonKey);
@@ -232,6 +261,9 @@ const deriveProgress = (base: EducationProgress): EducationProgress => {
     totalScore,
     achievements,
     lastUpdated: new Date().toISOString(),
+    lessons,
+    quizzes,
+    totalXP,
   };
 };
 

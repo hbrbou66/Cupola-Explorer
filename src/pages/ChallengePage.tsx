@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
 import { quizzes, type QuizQuestion } from '../data/quizzes.ts';
 import { useEducationProgress, type ChallengeRankRecord } from '../hooks/useEducationProgress.ts';
+import { updateEducationProgress } from '../utils/educationProgress.ts';
 
 const CHALLENGE_LENGTH = 10;
 
@@ -89,6 +90,22 @@ const ChallengePage = () => {
       timeTaken,
     };
     recordChallengeResult(record);
+    const achievements = ['challenge-completed'];
+    if (rank === 'Gold') {
+      achievements.push('challenge-gold');
+    }
+    updateEducationProgress({
+      quizzes: [
+        {
+          id: 'quiz-iss-challenge',
+          title: 'ISS Knowledge Challenge',
+          score: payload.score,
+          maxScore: payload.total,
+          completedAt: record.timestamp,
+        },
+      ],
+      achievements,
+    });
     setResult({ ...payload, rank });
     setShowSuccess(true);
     setSessionStartTime(null);
