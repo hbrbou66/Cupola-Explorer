@@ -206,6 +206,7 @@ const EducationPage = () => {
     [lessonProgress],
   );
   const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  const requiredLessonsForChallenge = 3;
   const missionStatusMessage = useMemo(() => {
     if (completedCount === 0) {
       return 'Launch your first training quiz to start logging mission certifications.';
@@ -216,7 +217,8 @@ const EducationPage = () => {
     return `Progress ${completedCount} of ${totalLessons} missions. Keep training to certify the rest.`;
   }, [completedCount, totalLessons]);
   const formattedBestScore = bestMissionScore > 0 ? `${Math.round(bestMissionScore)}%` : '—';
-  const isChallengeUnlocked = completedCount >= 3;
+  const isChallengeUnlocked = completedCount >= requiredLessonsForChallenge;
+  const lessonsRemaining = Math.max(requiredLessonsForChallenge - completedCount, 0);
   const challengeSubtitle = isChallengeUnlocked
     ? 'Ready for the ISS Knowledge Challenge'
     : 'Complete 3 lessons to unlock the challenge';
@@ -389,42 +391,68 @@ const EducationPage = () => {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
           <div
-            className="pointer-events-none absolute -left-24 top-1/2 h-64 w-64 -translate-y-1/2 rounded-full bg-indigo-500/20 blur-3xl"
+            className="pointer-events-none absolute -left-24 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-indigo-500/20 blur-3xl"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl"
+            className="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl"
             aria-hidden="true"
           />
-          <div className="relative flex flex-col gap-6 text-center sm:text-left sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-xl">
-              <p className="text-xs uppercase tracking-[0.5em] text-indigo-300/80">Special Mission</p>
-              <h3 className="mt-3 text-3xl font-semibold text-sky-100 sm:text-4xl">ISS Knowledge Challenge</h3>
-              <p className="mt-3 text-sm text-slate-300">{challengeSubtitle}</p>
+          <div className="relative grid gap-8 text-center lg:grid-cols-[1.35fr_1fr] lg:items-center lg:text-left">
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.5em] text-indigo-300/80">Special Mission</p>
+                <h3 className="mt-3 text-3xl font-semibold text-sky-100 sm:text-4xl">ISS Knowledge Challenge</h3>
+                <p className="mt-3 text-sm text-slate-300">{challengeSubtitle}</p>
+              </div>
+              <ul className="grid gap-3 text-sm text-slate-300/90 sm:grid-cols-2 lg:grid-cols-1">
+                <li className="rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-left">
+                  <p className="text-[11px] uppercase tracking-[0.45em] text-indigo-200/80">Mission Format</p>
+                  <p className="mt-2 text-sm text-slate-200">10 rapid-fire questions mixing intel from every lesson.</p>
+                </li>
+                <li className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-left">
+                  <p className="text-[11px] uppercase tracking-[0.45em] text-sky-200/80">Rewards</p>
+                  <p className="mt-2 text-sm text-slate-200">Earn Bronze, Silver, or Gold ranks and log your top accuracy.</p>
+                </li>
+              </ul>
               {challengeRank && (
-                <p className="mt-2 text-xs uppercase tracking-[0.35em] text-indigo-200/80">
+                <p className="text-xs uppercase tracking-[0.35em] text-indigo-200/80">
                   Last Rank: {challengeRank.rank} — {Math.round(challengeRank.percentage)}% accuracy
                 </p>
               )}
             </div>
-            <div className="flex w-full max-w-xs flex-col items-center gap-3">
+            <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-4 rounded-3xl border border-indigo-400/30 bg-slate-950/70 p-6 shadow-[0_30px_90px_-70px_rgba(129,140,248,0.95)]">
+              <div className="flex w-full items-center justify-between text-[11px] uppercase tracking-[0.4em]">
+                <span className="text-indigo-200/80">Status</span>
+                <span className={isChallengeUnlocked ? 'text-emerald-200' : 'text-amber-200'}>
+                  {isChallengeUnlocked ? 'Unlocked' : 'Locked'}
+                </span>
+              </div>
+              <div className="flex w-full flex-col gap-2 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-left">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-indigo-200/80">Mission Checklist</p>
+                <p className="text-xs text-slate-300">
+                  {isChallengeUnlocked
+                    ? 'All pre-mission lessons cleared. You are cleared for launch!'
+                    : `Complete ${lessonsRemaining} more lesson${lessonsRemaining === 1 ? '' : 's'} to begin the challenge.`}
+                </p>
+              </div>
               {isChallengeUnlocked ? (
                 <motion.button
                   type="button"
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -3 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate('/challenge')}
-                  className="w-full rounded-2xl border border-indigo-400/60 bg-indigo-500/20 px-5 py-3 text-sm font-semibold uppercase tracking-[0.4em] text-indigo-100 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300"
+                  className="mt-2 w-full rounded-2xl border border-indigo-400/60 bg-gradient-to-r from-indigo-500/70 via-sky-500/60 to-cyan-400/70 px-5 py-3 text-sm font-semibold uppercase tracking-[0.4em] text-indigo-50 shadow-[0_25px_70px_-50px_rgba(129,140,248,0.9)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300"
                 >
                   Start Challenge
                 </motion.button>
               ) : (
-                <div className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 px-5 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
-                  Complete 3 lessons to unlock
+                <div className="mt-2 w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 px-5 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
+                  Training in progress
                 </div>
               )}
-              <p className="text-[11px] text-slate-400">
-                Earn Bronze, Silver, or Gold ranks by acing a 10-question mission that pulls intel from every lesson.
+              <p className="text-center text-[11px] text-slate-400">
+                Launch directly into the challenge once unlocked — no extra briefing required.
               </p>
             </div>
           </div>
