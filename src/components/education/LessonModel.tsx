@@ -1,23 +1,47 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { useAnimations, useGLTF } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
-import type { Group, Mesh } from 'three';
+import type { Group, Mesh, Material } from 'three';
+
+type OpacityMaterial = Material & { opacity: number; transparent: boolean };
 
 interface LessonModelProps {
   modelPath: string;
   baseScale?: number;
   position?: [number, number, number];
   rotation?: [number, number, number];
-  rotationSpeed?: number;
+  onHoverChange?: (hovered: boolean) => void;
 }
+
+const setMaterialOpacity = (mesh: Mesh, opacity: number) => {
+  const material = mesh.material as Material | Material[] | undefined;
+  if (!material) {
+    return;
+  }
+
+  if (Array.isArray(material)) {
+    material.forEach((mat) => {
+      if (!mat) {
+        return;
+      }
+      const opacityMaterial = mat as OpacityMaterial;
+      opacityMaterial.transparent = opacity < 1;
+      opacityMaterial.opacity = opacity;
+    });
+    return;
+  }
+
+  const singleMaterial = material as OpacityMaterial;
+  singleMaterial.transparent = opacity < 1;
+  singleMaterial.opacity = opacity;
+};
 
 const LessonModel = ({
   modelPath,
   baseScale = 1,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  rotationSpeed = 0.002,
+  onHoverChange,
 }: LessonModelProps) => {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -53,24 +77,27 @@ const LessonModel = ({
     };
   }, [actions, names]);
 
-  useFrame(() => {
-    if (!groupRef.current) {
-      return;
-    }
-    groupRef.current.rotation.y += rotationSpeed;
-  });
-
   const [spring, api] = useSpring(() => ({
-    scale: baseScale * 0.7,
-    config: { tension: 120, friction: 18, mass: 1.1 },
+    scale: baseScale * 0.85,
+    opacity: 0,
+    config: {
+      scale: { mass: 1.2, tension: 180, friction: 24 },
+      opacity: { mass: 1, tension: 120, friction: 30 },
+    },
   }));
 
   useEffect(() => {
-    api.start({ scale: baseScale });
+    api.start({
+      from: { scale: baseScale * 0.88, opacity: 0 },
+      to: { scale: baseScale, opacity: 1 },
+      reset: true,
+    });
   }, [api, baseScale, modelPath]);
 
   useEffect(() => {
-    api.start({ scale: hovered ? baseScale * 1.06 : baseScale });
+    api.start({
+      scale: hovered ? baseScale * 1.06 : baseScale,
+    });
   }, [api, baseScale, hovered]);
 
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
@@ -84,8 +111,21 @@ const LessonModel = ({
       if (typeof mesh.receiveShadow === 'boolean') {
         mesh.receiveShadow = true;
       }
+      setMaterialOpacity(mesh, spring.opacity.get());
     });
-  }, [scene]);
+  }, [scene, spring.opacity]);
+
+  useEffect(() => {
+    const unsubscribe = spring.opacity.onChange((value) => {
+      scene.traverse((child) => {
+        const mesh = child as Mesh;
+        setMaterialOpacity(mesh, value);
+      });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [scene, spring.opacity]);
 
   return (
     <a.group
@@ -95,10 +135,12 @@ const LessonModel = ({
       onPointerOver={(event) => {
         event.stopPropagation();
         setHovered(true);
+        onHoverChange?.(true);
       }}
       onPointerOut={(event) => {
         event.stopPropagation();
         setHovered(false);
+        onHoverChange?.(false);
       }}
     >
       <primitive object={scene} dispose={null} />
