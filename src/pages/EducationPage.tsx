@@ -297,6 +297,18 @@ const EducationPage = () => {
                       →
                     </span>
                   </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleLessonSelect(lesson);
+                      }}
+                      className="rounded-xl border border-cyan-400/60 bg-cyan-500/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-cyan-100 transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_-45px_rgba(6,182,212,0.85)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                    >
+                      Start Quiz
+                    </button>
+                  </div>
                 </div>
               </motion.article>
             );
