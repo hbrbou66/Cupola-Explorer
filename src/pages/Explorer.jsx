@@ -291,7 +291,7 @@ function Explorer() {
             <button
               type="button"
               onClick={() => navigate('/education')}
-              className="ml-2 rounded-md bg-sky-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-sky-700"
+              className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-sky-100 transition hover:border-sky-400/70 hover:bg-sky-500/20"
             >
               Go to Education
             </button>
