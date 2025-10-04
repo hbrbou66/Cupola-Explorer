@@ -79,3 +79,33 @@ a {
 .scrollable-modal::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 200, 255, 0.8);
 }
+
+.lesson-scrollable-content {
+  padding: 1.5rem 2rem;
+  color: #dbe7ff;
+  overflow-y: auto;
+  max-height: calc(100vh - 400px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 80, 120, 0.6) transparent;
+}
+
+.lesson-scrollable-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lesson-scrollable-content::-webkit-scrollbar-thumb {
+  background: rgba(60, 80, 120, 0.6);
+  border-radius: 999px;
+}
+
+.lesson-scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 161, 255, 0.8);
+}
+
+.fact-item {
+  background: rgba(45, 60, 90, 0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
