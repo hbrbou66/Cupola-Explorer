@@ -3,18 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
 import { quizzes, type QuizQuestion } from '../data/quizzes.ts';
-import {
-  CHALLENGE_HISTORY_STORAGE_KEY,
-  type ChallengeRankRecord,
-} from '../utils/storageKeys.ts';
+import { useEducationProgress, type ChallengeRankRecord } from '../hooks/useEducationProgress.ts';
 
 const CHALLENGE_LENGTH = 10;
 
 type ChallengePhase = 'intro' | 'quiz';
 
 type ChallengeRank = ChallengeRankRecord['rank'];
-
-const LEGACY_CHALLENGE_KEY = 'cupola-challenge-rank';
 
 interface ChallengeResult extends QuizCompletionPayload {
   rank: ChallengeRank;
@@ -49,59 +44,10 @@ const ChallengePage = () => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [result, setResult] = useState<ChallengeResult | null>(null);
-  const [history, setHistory] = useState<ChallengeRankRecord[]>(() => {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-
-    const cachedHistory = window.localStorage.getItem(CHALLENGE_HISTORY_STORAGE_KEY);
-    if (cachedHistory) {
-      try {
-        const parsed = JSON.parse(cachedHistory) as ChallengeRankRecord[];
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (error) {
-        console.warn('Failed to parse stored challenge history', error);
-      }
-    }
-
-    const legacyRecord = window.localStorage.getItem(LEGACY_CHALLENGE_KEY);
-    if (legacyRecord) {
-      try {
-        const parsedLegacy = JSON.parse(legacyRecord) as {
-          rank?: string;
-          percentage?: number;
-          completedAt?: string;
-        } | null;
-
-        if (parsedLegacy && typeof parsedLegacy === 'object') {
-          const migratedRecord: ChallengeRankRecord = {
-            timestamp: parsedLegacy.completedAt ?? new Date().toISOString(),
-            score: 0,
-            rank: parsedLegacy.rank ?? 'Bronze',
-            accuracy: parsedLegacy.percentage ?? 0,
-            timeTaken: 0,
-          };
-
-          const migratedHistory = [migratedRecord];
-          window.localStorage.setItem(
-            CHALLENGE_HISTORY_STORAGE_KEY,
-            JSON.stringify(migratedHistory),
-          );
-          window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
-          return migratedHistory;
-        }
-      } catch (error) {
-        console.warn('Failed to parse legacy challenge rank record', error);
-      }
-    }
-
-    return [];
-  });
+  const { challengeHistory, recordChallengeResult } = useEducationProgress();
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
 
-  const latestRecord = history.length > 0 ? history[history.length - 1] : null;
+  const latestRecord = challengeHistory.length > 0 ? challengeHistory[challengeHistory.length - 1] : null;
 
   const cinematicGlow = useMemo(
     () => ({
@@ -142,26 +88,7 @@ const ChallengePage = () => {
       accuracy: payload.percentage,
       timeTaken,
     };
-    let updatedHistory: ChallengeRankRecord[] = [];
-    if (typeof window !== 'undefined') {
-      const historyKey = CHALLENGE_HISTORY_STORAGE_KEY;
-      let parsedExisting: ChallengeRankRecord[] = [];
-      try {
-        const existingRaw = window.localStorage.getItem(historyKey);
-        if (existingRaw) {
-          const existing = JSON.parse(existingRaw);
-          parsedExisting = Array.isArray(existing) ? (existing as ChallengeRankRecord[]) : [];
-        }
-      } catch (error) {
-        console.warn('Failed to parse existing challenge history', error);
-      }
-      updatedHistory = [...parsedExisting, record];
-      window.localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
-      window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
-    } else {
-      updatedHistory = [...history, record];
-    }
-    setHistory(updatedHistory);
+    recordChallengeResult(record);
     setResult({ ...payload, rank });
     setShowSuccess(true);
     setSessionStartTime(null);

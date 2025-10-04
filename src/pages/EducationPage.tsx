@@ -1,97 +1,74 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useSpring } from 'framer-motion';
 import type { Lesson } from '../data/lessons.ts';
 import { lessonData } from '../data/lessons.ts';
 import LessonModal from '../components/education/LessonModal';
 import type { QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
-import {
-  CHALLENGE_HISTORY_STORAGE_KEY,
-  LESSON_PROGRESS_STORAGE_KEY,
-  type ChallengeRankRecord,
-} from '../utils/storageKeys.ts';
+import { useEducationProgress } from '../hooks/useEducationProgress.ts';
 
-interface LessonProgressEntry {
-  viewed: boolean;
-  bestScore: number;
-  attempts: number;
-  completed: boolean;
-  lastScore?: number;
-}
+const useAnimatedNumber = (value: number) => {
+  const spring = useSpring(value, { stiffness: 160, damping: 26, mass: 0.6 });
+  const [animatedValue, setAnimatedValue] = useState(value);
 
-const LEGACY_CHALLENGE_KEY = 'cupola-challenge-rank';
+  useEffect(() => {
+    spring.set(value);
+  }, [spring, value]);
+
+  useEffect(() => {
+    const unsubscribe = spring.on('change', (latest) => {
+      setAnimatedValue(latest);
+    });
+    return () => unsubscribe();
+  }, [spring]);
+
+  return animatedValue;
+};
+
+const ACHIEVEMENT_DEFINITIONS: Record<string, { title: string; description: string }> = {
+  'first-docking': {
+    title: 'First Docking',
+    description: 'Complete your first lesson quiz with a passing score.',
+  },
+  'halfway-crew': {
+    title: 'Halfway Crew',
+    description: 'Certify at least half of the available lessons.',
+  },
+  'mission-master': {
+    title: 'Mission Master',
+    description: 'Complete every lesson in the education hangar.',
+  },
+  'perfect-flight': {
+    title: 'Perfect Flight',
+    description: 'Earn a flawless 100% score on any lesson quiz.',
+  },
+  'precision-specialist': {
+    title: 'Precision Specialist',
+    description: 'Score 90% or higher on any lesson quiz.',
+  },
+  'challenge-completed': {
+    title: 'Challenge Completed',
+    description: 'Finish an ISS Knowledge Challenge run.',
+  },
+  'gold-ace': {
+    title: 'Gold Ace',
+    description: 'Achieve a Gold rank in the ISS Knowledge Challenge.',
+  },
+};
 
 const EducationPage = () => {
   const navigate = useNavigate();
-  const [lessonProgress, setLessonProgress] = useState<Record<number, LessonProgressEntry>>(() => {
-    if (typeof window === 'undefined') {
-      return {};
-    }
-    const stored = window.localStorage.getItem(LESSON_PROGRESS_STORAGE_KEY);
-    if (!stored) {
-      return {};
-    }
-    try {
-      const parsed = JSON.parse(stored) as Record<number, LessonProgressEntry>;
-      return parsed ?? {};
-    } catch (error) {
-      console.warn('Failed to parse lesson progress from storage', error);
-      return {};
-    }
-  });
+  const {
+    progress: educationProgress,
+    lessonProgress,
+    challengeHistory,
+    markLessonViewed,
+    recordQuizAttempt,
+    derived,
+  } = useEducationProgress();
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [navigationDirection, setNavigationDirection] = useState(0);
-  const [challengeHistory, setChallengeHistory] = useState<ChallengeRankRecord[]>(() => {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-
-    const stored = window.localStorage.getItem(CHALLENGE_HISTORY_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as ChallengeRankRecord[];
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (error) {
-        console.warn('Failed to parse challenge history from storage', error);
-      }
-    }
-
-    const legacyRecord = window.localStorage.getItem(LEGACY_CHALLENGE_KEY);
-    if (legacyRecord) {
-      try {
-        const parsedLegacy = JSON.parse(legacyRecord) as {
-          rank?: string;
-          percentage?: number;
-          completedAt?: string;
-        } | null;
-
-        if (parsedLegacy && typeof parsedLegacy === 'object') {
-          const migratedRecord: ChallengeRankRecord = {
-            timestamp: parsedLegacy.completedAt ?? new Date().toISOString(),
-            score: 0,
-            rank: parsedLegacy.rank ?? 'Bronze',
-            accuracy: parsedLegacy.percentage ?? 0,
-            timeTaken: 0,
-          };
-
-          const migratedHistory = [migratedRecord];
-          window.localStorage.setItem(
-            CHALLENGE_HISTORY_STORAGE_KEY,
-            JSON.stringify(migratedHistory),
-          );
-          window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
-          return migratedHistory;
-        }
-      } catch (error) {
-        console.warn('Failed to parse legacy challenge rank from storage', error);
-      }
-    }
-
-    return [];
-  });
 
   const latestChallengeRecord = useMemo(
     () => (challengeHistory.length > 0 ? challengeHistory[challengeHistory.length - 1] : null),
@@ -165,19 +142,7 @@ const EducationPage = () => {
     }
     setNavigationDirection(0);
     setSelectedLessonIndex(index);
-    setLessonProgress((prev) => {
-      const existing = prev[lesson.id];
-      return {
-        ...prev,
-        [lesson.id]: {
-          viewed: true,
-          bestScore: existing?.bestScore ?? 0,
-          attempts: existing?.attempts ?? 0,
-          completed: existing?.completed ?? false,
-          lastScore: existing?.lastScore,
-        },
-      };
-    });
+    markLessonViewed(lesson.id);
   };
 
   const handleLessonNavigate = (direction: 'next' | 'previous') => {
@@ -200,87 +165,24 @@ const EducationPage = () => {
       return;
     }
     setSelectedLessonIndex(newIndex);
-    setLessonProgress((prev) => {
-      const existing = prev[lesson.id];
-      return {
-        ...prev,
-        [lesson.id]: {
-          viewed: true,
-          bestScore: existing?.bestScore ?? 0,
-          attempts: existing?.attempts ?? 0,
-          completed: existing?.completed ?? false,
-          lastScore: existing?.lastScore,
-        },
-      };
-    });
+    markLessonViewed(lesson.id);
   };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(LESSON_PROGRESS_STORAGE_KEY, JSON.stringify(lessonProgress));
-  }, [lessonProgress]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === CHALLENGE_HISTORY_STORAGE_KEY) {
-        try {
-          const parsed = event.newValue ? JSON.parse(event.newValue) : [];
-          setChallengeHistory(Array.isArray(parsed) ? (parsed as ChallengeRankRecord[]) : []);
-        } catch (error) {
-          console.warn('Failed to parse updated challenge history from storage', error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
 
   const handleQuizComplete = ({ lessonId, percentage, passed }: QuizCompletionPayload) => {
-    setLessonProgress((prev) => {
-      const existing = prev[lessonId];
-      const bestScore = Math.max(existing?.bestScore ?? 0, percentage);
-      return {
-        ...prev,
-        [lessonId]: {
-          viewed: existing?.viewed ?? true,
-          bestScore,
-          attempts: (existing?.attempts ?? 0) + 1,
-          completed: passed || existing?.completed || false,
-          lastScore: percentage,
-        },
-      };
-    });
+    recordQuizAttempt({ lessonId, percentage, passed });
   };
 
-  const totalLessons = lessonData.length;
-  const completedCount = useMemo(
-    () =>
-      lessonData.reduce(
-        (total, lesson) => (lessonProgress[lesson.id]?.completed ? total + 1 : total),
-        0,
-      ),
-    [lessonProgress],
-  );
-  const totalAttempts = useMemo(
-    () =>
-      Object.values(lessonProgress).reduce((total, entry) => total + (entry.attempts ?? 0), 0),
-    [lessonProgress],
-  );
-  const bestMissionScore = useMemo(
-    () =>
-      Object.values(lessonProgress).reduce((best, entry) =>
-        entry.bestScore > best ? entry.bestScore : best,
-      0),
-    [lessonProgress],
-  );
+  const { totalLessons, completedCount, totalAttempts, bestMissionScore } = derived;
   const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  const animatedProgress = useAnimatedNumber(progress);
+  const animatedCompleted = useAnimatedNumber(completedCount);
+  const animatedAttempts = useAnimatedNumber(totalAttempts);
+  const animatedBestScore = useAnimatedNumber(bestMissionScore);
+  const animatedTotalScore = useAnimatedNumber(educationProgress.totalScore ?? 0);
+
+  const unlockedAchievements = educationProgress.achievements ?? [];
+  const allAchievementEntries = Object.entries(ACHIEVEMENT_DEFINITIONS);
+  const hasUnlockedAchievements = unlockedAchievements.length > 0;
   const requiredLessonsForChallenge = 3;
   const missionStatusMessage = useMemo(() => {
     if (completedCount === 0) {
@@ -291,7 +193,8 @@ const EducationPage = () => {
     }
     return `Progress ${completedCount} of ${totalLessons} missions. Keep training to certify the rest.`;
   }, [completedCount, totalLessons]);
-  const formattedBestScore = bestMissionScore > 0 ? `${Math.round(bestMissionScore)}%` : '—';
+  const formattedBestScore = bestMissionScore > 0 ? `${Math.round(animatedBestScore)}%` : '—';
+  const formattedTotalScore = Math.round(animatedTotalScore);
   const isChallengeUnlocked = completedCount >= requiredLessonsForChallenge;
   const lessonsRemaining = Math.max(requiredLessonsForChallenge - completedCount, 0);
   const challengeSubtitle = isChallengeUnlocked
@@ -331,15 +234,23 @@ const EducationPage = () => {
                 Each module flows directly into Explorer for a hands-on experience.
               </p>
             </div>
-            <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/80 p-6 shadow-[0_20px_60px_-45px_rgba(56,189,248,0.75)]">
+              <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/80 p-6 shadow-[0_20px_60px_-45px_rgba(56,189,248,0.75)]">
               <div className="flex items-center justify-between text-sm text-slate-300">
                 <span className="font-semibold uppercase tracking-[0.3em] text-cyan-300/80">Mission Progress</span>
-                <span className="font-semibold text-sky-100">{completedCount}/{totalLessons}</span>
+                <span className="font-semibold text-sky-100">{Math.round(animatedCompleted)}/{totalLessons}</span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-800/80" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-                <div
-                  className="h-full w-full origin-left scale-x-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400 transition-transform duration-700 ease-out"
-                  style={{ transform: `scaleX(${progress / 100})` }}
+              <div
+                className="h-3 w-full overflow-hidden rounded-full bg-slate-800/80"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(animatedProgress)}
+              >
+                <motion.div
+                  className="h-full w-full origin-left rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: Math.max(progress, 0) / 100 }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 />
               </div>
               <p className="text-xs text-slate-400">
@@ -505,21 +416,65 @@ const EducationPage = () => {
             <p className="text-xs uppercase tracking-[0.5em] text-cyan-300/70">Mission Debrief</p>
             <h3 className="text-2xl font-semibold text-sky-100 sm:text-3xl">Training Log &amp; Achievements</h3>
             <p className="text-sm text-slate-300">{missionStatusMessage}</p>
-            <div className="grid gap-4 text-left sm:grid-cols-3">
+            <div className="grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-5">
                 <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Lessons Cleared</p>
                 <p className="mt-3 text-2xl font-semibold text-sky-100">
-                  {completedCount}/{totalLessons}
+                  {Math.round(animatedCompleted)}/{totalLessons}
                 </p>
               </div>
               <div className="rounded-2xl border border-blue-400/25 bg-slate-900/70 p-5">
                 <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Quiz Attempts</p>
-                <p className="mt-3 text-2xl font-semibold text-sky-100">{totalAttempts}</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">{Math.round(animatedAttempts)}</p>
               </div>
               <div className="rounded-2xl border border-emerald-400/25 bg-slate-900/70 p-5">
                 <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Best Score</p>
                 <p className="mt-3 text-2xl font-semibold text-sky-100">{formattedBestScore}</p>
               </div>
+              <div className="rounded-2xl border border-indigo-400/25 bg-slate-900/70 p-5">
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Challenge Score</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">
+                  {formattedTotalScore > 0 ? formattedTotalScore : '—'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 text-left">
+              <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Achievements</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {allAchievementEntries.map(([id, info]) => {
+                  const unlocked = unlockedAchievements.includes(id);
+                  return (
+                    <div
+                      key={id}
+                      className={`relative overflow-hidden rounded-2xl border p-4 transition ${
+                        unlocked
+                          ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100 shadow-[0_25px_80px_-60px_rgba(16,185,129,0.85)]'
+                          : 'border-slate-800/60 bg-slate-900/70 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold uppercase tracking-[0.3em]">
+                          {info.title}
+                        </h4>
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${
+                            unlocked ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-800/70 text-slate-400'
+                          }`}
+                        >
+                          {unlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-slate-200/90">{info.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {!hasUnlockedAchievements && (
+                <p className="mt-3 text-xs text-slate-400">
+                  Complete lessons and challenges to earn new mission achievements.
+                </p>
+              )}
             </div>
           </div>
         </section>
