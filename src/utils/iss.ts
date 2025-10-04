@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 
-const ISS_TLE_URL = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE';
-
 export const FALLBACK_TLE: TleSet = {
   line1: '1 25544U 98067A   24103.43211991  .00018476  00000+0  32968-3 0  9993',
   line2: '2 25544  51.6405  60.2146 0004116 162.5696 274.5025 15.50060690552077',
@@ -160,26 +158,6 @@ const eciToGeodetic = (positionEci: THREE.Vector3, gmst: number) => {
     latitude,
     altitude,
   };
-};
-
-export const fetchLatestTle = async (): Promise<TleSet> => {
-  const response = await fetch(ISS_TLE_URL, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ISS TLE: ${response.status} ${response.statusText}`);
-  }
-  const text = await response.text();
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const [line1 = '', line2 = ''] = lines.slice(-2);
-  if (!line1 || !line2) {
-    throw new Error('Unable to retrieve ISS TLE');
-  }
-  if (!line1.startsWith('1 ') || !line2.startsWith('2 ')) {
-    throw new Error('Received malformed ISS TLE');
-  }
-  return { line1, line2 };
 };
 
 export const getIssPositionAt = (satrec: SimpleSatRec, timestamp: number): IssGeodeticPosition | null => {
