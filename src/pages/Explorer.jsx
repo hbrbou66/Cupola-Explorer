@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ISSGlobe from '../components/ISSGlobe.jsx';
 import TimeControls from '../components/TimeControls.jsx';
 import HudMenuPanel from '../components/HudMenuPanel.tsx';
@@ -69,6 +70,7 @@ const usePersistentState = (key, defaultValue) => {
 
 function Explorer() {
   const { currentTime, mode, speed, seekTo, stepBy, togglePlay } = useTimeStore();
+  const navigate = useNavigate();
 
   const [satrec, setSatrec] = useState(null);
   const [tleTimestamp, setTleTimestamp] = useState(null);
@@ -216,17 +218,6 @@ function Explorer() {
       ? 'Tracking nominal. Streaming live orbit data.'
       : 'Simulated playback active. Speed controls adjust orbit progression.';
 
-  const orbitStatus = error ? 'cached' : 'nominal';
-  const isLiveMode = mode === 'live';
-  const orbitBadgeLabel =
-    orbitStatus === 'cached' ? 'LIVE ORBIT (cached)' : isLiveMode ? 'LIVE ORBIT' : 'SIMULATED PLAYBACK';
-  const orbitBadgeDescription =
-    orbitStatus === 'cached'
-      ? 'Using cached orbital elements while updates retry.'
-      : isLiveMode
-        ? 'Streaming orbit data via CelesTrak.'
-        : 'Timeline controls active — adjust playback to explore past paths.';
-
   const uiClassName = `flex min-h-screen flex-col bg-slate-950 text-slate-100`;
 
   const overlayOptions = useMemo(
@@ -296,10 +287,14 @@ function Explorer() {
               Astronaut Edition
             </p>
           </div>
-          <div className="flex flex-1 items-center justify-center">
-            <span className="hidden text-slate-400 sm:inline">Orbital data via CelesTrak • Time synced in-app</span>
-          </div>
-          <div className="flex items-center justify-end">
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/education')}
+              className="ml-2 rounded-md bg-sky-600 px-3 py-1 text-sm font-medium text-white transition hover:bg-sky-700"
+            >
+              Go to Education
+            </button>
             <button
               type="button"
               className="rounded-xl border border-slate-800/60 bg-slate-900/60 p-2 text-slate-200 transition hover:border-sky-400/70 hover:bg-slate-900/80 hover:text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
@@ -331,12 +326,13 @@ function Explorer() {
         allowWeightlessHud ? 'weightless-hud' : ''
       }`}>
         <section className="flex w-full max-w-6xl flex-1 flex-col gap-6 lg:flex-row">
-          <div className="relative flex-1 overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/60 p-3 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
-            <ISSGlobe
-              viewMode={viewMode}
-              onViewInteraction={onInteractionChange}
-              issPosition={issPosition}
-              trailPoints={trailPoints}
+          <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/60 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
+            <div className="relative flex-1 overflow-hidden p-3">
+              <ISSGlobe
+                viewMode={viewMode}
+                onViewInteraction={onInteractionChange}
+                issPosition={issPosition}
+                trailPoints={trailPoints}
               futurePoints={futurePoints}
               showTerminator={showTerminator}
               showCityLights={showCityLights}
@@ -346,16 +342,12 @@ function Explorer() {
               weightlessnessIntensity={weightlessnessIntensity}
               reducedMotion={reducedMotion}
               currentTime={currentTime}
-              interactionPaused={isInteracting}
-              fastOverlaySuspended={fastOverlaySuspended}
-            />
-            <div className="pointer-events-none absolute bottom-4 left-4 z-20 max-w-[85%] sm:max-w-xs">
-              <div className="flex flex-col gap-1 rounded-xl border border-sky-500/60 bg-sky-900/70 px-3 py-2 text-sky-100 shadow-lg backdrop-blur">
-                <span className="text-[0.6rem] font-semibold uppercase tracking-[0.35em] sm:text-[0.7rem]">
-                  {orbitBadgeLabel}
-                </span>
-                <span className="text-[0.65rem] text-sky-100/80 sm:text-xs">{orbitBadgeDescription}</span>
-              </div>
+                interactionPaused={isInteracting}
+                fastOverlaySuspended={fastOverlaySuspended}
+              />
+            </div>
+            <div className="w-full rounded-b-lg border-t border-sky-600 bg-sky-900/70 px-4 py-2 text-center text-sky-100">
+              Streaming orbit data via CelesTrak.
             </div>
           </div>
 
