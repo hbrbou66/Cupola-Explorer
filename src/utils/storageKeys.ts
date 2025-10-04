@@ -1,8 +1,10 @@
 export const LESSON_PROGRESS_STORAGE_KEY = 'cupola-education-progress';
-export const CHALLENGE_RANK_STORAGE_KEY = 'cupola-challenge-rank';
+export const CHALLENGE_HISTORY_STORAGE_KEY = 'cupola-challenge-history';
 
 export interface ChallengeRankRecord {
-  rank: 'Bronze' | 'Silver' | 'Gold';
-  percentage: number;
-  completedAt: string;
+  timestamp: string;
+  score: number;
+  rank: string;
+  accuracy: number;
+  timeTaken: number;
 }
