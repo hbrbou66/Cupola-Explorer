@@ -4,16 +4,31 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Lesson } from '../data/lessons.ts';
 import { lessonData } from '../data/lessons.ts';
 import LessonVisual from '../components/education/LessonVisual';
+import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
+import { getQuizByLessonId } from '../data/quizzes.ts';
+
+interface LessonProgressEntry {
+  viewed: boolean;
+  bestScore: number;
+  attempts: number;
+  completed: boolean;
+  lastScore?: number;
+}
 
 const EducationPage = () => {
   const navigate = useNavigate();
-  const [completedLessons, setCompletedLessons] = useState<Set<number>>(new Set());
+  const [lessonProgress, setLessonProgress] = useState<Record<number, LessonProgressEntry>>({});
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [navigationDirection, setNavigationDirection] = useState(0);
 
   const selectedLesson: Lesson | null = useMemo(
     () => (selectedLessonIndex !== null ? lessonData[selectedLessonIndex] : null),
     [selectedLessonIndex],
+  );
+
+  const selectedQuiz = useMemo(
+    () => (selectedLesson ? getQuizByLessonId(selectedLesson.id) ?? null : null),
+    [selectedLesson],
   );
 
   const handleLessonClose = () => {
@@ -48,10 +63,18 @@ const EducationPage = () => {
     }
     setNavigationDirection(0);
     setSelectedLessonIndex(index);
-    setCompletedLessons((prev) => {
-      const updated = new Set(prev);
-      updated.add(lesson.id);
-      return updated;
+    setLessonProgress((prev) => {
+      const existing = prev[lesson.id];
+      return {
+        ...prev,
+        [lesson.id]: {
+          viewed: true,
+          bestScore: existing?.bestScore ?? 0,
+          attempts: existing?.attempts ?? 0,
+          completed: existing?.completed ?? false,
+          lastScore: existing?.lastScore,
+        },
+      };
     });
   };
 
@@ -66,16 +89,70 @@ const EducationPage = () => {
     const newIndex = (selectedLessonIndex + delta + lessonData.length) % lessonData.length;
     const lesson = lessonData[newIndex];
     setSelectedLessonIndex(newIndex);
-    setCompletedLessons((prev) => {
-      const updated = new Set(prev);
-      updated.add(lesson.id);
-      return updated;
+    setLessonProgress((prev) => {
+      const existing = prev[lesson.id];
+      return {
+        ...prev,
+        [lesson.id]: {
+          viewed: true,
+          bestScore: existing?.bestScore ?? 0,
+          attempts: existing?.attempts ?? 0,
+          completed: existing?.completed ?? false,
+          lastScore: existing?.lastScore,
+        },
+      };
+    });
+  };
+
+  const handleQuizComplete = ({ lessonId, percentage, passed }: QuizCompletionPayload) => {
+    setLessonProgress((prev) => {
+      const existing = prev[lessonId];
+      const bestScore = Math.max(existing?.bestScore ?? 0, percentage);
+      return {
+        ...prev,
+        [lessonId]: {
+          viewed: existing?.viewed ?? true,
+          bestScore,
+          attempts: (existing?.attempts ?? 0) + 1,
+          completed: passed || existing?.completed || false,
+          lastScore: percentage,
+        },
+      };
     });
   };
 
   const totalLessons = lessonData.length;
-  const completedCount = completedLessons.size;
+  const completedCount = useMemo(
+    () =>
+      lessonData.reduce(
+        (total, lesson) => (lessonProgress[lesson.id]?.completed ? total + 1 : total),
+        0,
+      ),
+    [lessonProgress],
+  );
+  const totalAttempts = useMemo(
+    () =>
+      Object.values(lessonProgress).reduce((total, entry) => total + (entry.attempts ?? 0), 0),
+    [lessonProgress],
+  );
+  const bestMissionScore = useMemo(
+    () =>
+      Object.values(lessonProgress).reduce((best, entry) =>
+        entry.bestScore > best ? entry.bestScore : best,
+      0),
+    [lessonProgress],
+  );
   const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  const missionStatusMessage = useMemo(() => {
+    if (completedCount === 0) {
+      return 'Launch your first training quiz to start logging mission certifications.';
+    }
+    if (completedCount === totalLessons) {
+      return 'All lessons certified! You have mastered the Cupola Explorer curriculum.';
+    }
+    return `Progress ${completedCount} of ${totalLessons} missions. Keep training to certify the rest.`;
+  }, [completedCount, totalLessons]);
+  const formattedBestScore = bestMissionScore > 0 ? `${Math.round(bestMissionScore)}%` : '—';
 
   const modalBackdropVariants = {
     hidden: { opacity: 0 },
@@ -158,14 +235,19 @@ const EducationPage = () => {
                   style={{ transform: `scaleX(${progress / 100})` }}
                 />
               </div>
-              <p className="text-xs text-slate-400">Complete lessons by opening each mission briefing.</p>
+              <p className="text-xs text-slate-400">
+                Ace the mission quiz with an 80% score to mark each lesson as complete.
+              </p>
             </div>
           </div>
         </section>
 
         <section className="grid gap-8 md:grid-cols-2">
           {lessonData.map((lesson) => {
-            const isComplete = completedLessons.has(lesson.id);
+            const progressEntry = lessonProgress[lesson.id];
+            const isComplete = progressEntry?.completed ?? false;
+            const hasAttempt = (progressEntry?.attempts ?? 0) > 0;
+            const bestScore = Math.round(progressEntry?.bestScore ?? 0);
             return (
               <motion.article
                 key={lesson.id}
@@ -198,11 +280,15 @@ const EducationPage = () => {
                         {lesson.title}
                       </h3>
                     </div>
-                    {isComplete && (
+                    {isComplete ? (
                       <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold tracking-[0.3em] text-emerald-200">
                         Complete
                       </span>
-                    )}
+                    ) : hasAttempt ? (
+                      <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold tracking-[0.3em] text-amber-200">
+                        Best {bestScore}%
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-sm leading-6 text-slate-300">{lesson.description}</p>
                   <div className="mt-auto flex items-center justify-between gap-3 text-xs uppercase tracking-[0.35em] text-slate-400">
@@ -222,13 +308,26 @@ const EducationPage = () => {
             className="pointer-events-none absolute -inset-1 rounded-[2rem] bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-purple-500/20 blur-3xl"
             aria-hidden="true"
           />
-          <div className="relative mx-auto flex max-w-2xl flex-col gap-4">
-            <p className="text-xs uppercase tracking-[0.5em] text-cyan-300/70">Quiz Station</p>
-            <h3 className="text-2xl font-semibold text-sky-100 sm:text-3xl">📘 Upcoming Quiz: Test your knowledge!</h3>
-            <p className="text-sm text-slate-300">
-              A luminous quiz experience is on final approach. Check back soon to challenge your ISS knowledge and
-              earn mission badges.
-            </p>
+          <div className="relative mx-auto flex max-w-3xl flex-col gap-6">
+            <p className="text-xs uppercase tracking-[0.5em] text-cyan-300/70">Mission Debrief</p>
+            <h3 className="text-2xl font-semibold text-sky-100 sm:text-3xl">Training Log &amp; Achievements</h3>
+            <p className="text-sm text-slate-300">{missionStatusMessage}</p>
+            <div className="grid gap-4 text-left sm:grid-cols-3">
+              <div className="rounded-2xl border border-cyan-400/30 bg-slate-900/70 p-5">
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Lessons Cleared</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">
+                  {completedCount}/{totalLessons}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-blue-400/25 bg-slate-900/70 p-5">
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Quiz Attempts</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">{totalAttempts}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/25 bg-slate-900/70 p-5">
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Best Score</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">{formattedBestScore}</p>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -315,6 +414,17 @@ const EducationPage = () => {
                       <p>{selectedLesson.funFact ?? 'Even at ~400 km, thin atmosphere causes drag; reboosts keep ISS aloft.'}</p>
                     </div>
                   </section>
+
+                  {selectedQuiz && (
+                    <section className="lesson-section">
+                      <QuizModule
+                        key={selectedLesson.id}
+                        lessonId={selectedLesson.id}
+                        questions={selectedQuiz.questions}
+                        onComplete={handleQuizComplete}
+                      />
+                    </section>
+                  )}
                 </motion.div>
               </AnimatePresence>
 
