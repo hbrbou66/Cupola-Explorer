@@ -15,29 +15,30 @@ export const quizzes: LessonQuiz[] = [
     lessonId: 1,
     questions: [
       {
-        question: 'How fast does the ISS travel to maintain its orbit?',
-        options: ['7,200 km/h', '27,571 km/h', '120,000 km/h', '9,800 km/h'],
+        question: 'How fast does the International Space Station orbit Earth?',
+        options: ['7,000 km/h', '27,571 km/h', '40,000 km/h', '15,000 km/h'],
         correctIndex: 1,
         explanation:
-          'The station cruises at roughly 27,571 km/h, fast enough to circle Earth in about 90 minutes.',
+          'The ISS travels around Earth at about 27,571 km/h — roughly 7.66 kilometers per second.',
       },
       {
-        question: 'Roughly how often does the ISS complete a lap around Earth?',
-        options: ['Every 45 minutes', 'Every 90 minutes', 'Every 3 hours', 'Twice per day'],
+        question: 'How long does it take the ISS to complete one orbit?',
+        options: ['24 hours', '90 minutes', '3 hours', '45 minutes'],
         correctIndex: 1,
-        explanation: 'One full orbit takes about 90 minutes, delivering sunrise or sunset about every 45 minutes.',
+        explanation:
+          'The ISS completes one orbit roughly every 90 minutes — circling Earth 16 times a day.',
       },
       {
-        question: 'Why do controllers schedule periodic “reboost” maneuvers?',
+        question: 'Why doesn’t the ISS fall to Earth despite gravity?',
         options: [
-          'To steer away from storms',
-          'To counter the pull of the Moon',
-          'To counter thin atmospheric drag',
-          'To conserve propellant',
+          'It’s above gravity’s reach',
+          'It’s moving fast enough to keep missing Earth',
+          'It has rocket boosters always on',
+          'Earth’s atmosphere pushes it up',
         ],
-        correctIndex: 2,
+        correctIndex: 1,
         explanation:
-          'Even at 400 km up, wisps of atmosphere slow the ISS; reboost burns nudge it back to a safe altitude.',
+          'The ISS is in continuous free-fall — its speed keeps it in orbit while gravity pulls it toward Earth.',
       },
     ],
   },
@@ -45,39 +46,34 @@ export const quizzes: LessonQuiz[] = [
     lessonId: 2,
     questions: [
       {
-        question: 'Why do astronauts witness about 16 sunrises and sunsets per Earth day?',
+        question: 'Why do astronauts on the ISS see 16 sunrises and sunsets every day?',
         options: [
-          'The ISS rotates slowly in place',
-          'The station completes ~16 orbits daily',
-          'Earth spins faster at the equator',
-          'Mission control dims the station lights',
+          'Because the ISS rotates faster than Earth',
+          'Because the ISS orbits Earth every 90 minutes',
+          'Because the Sun rotates around the ISS',
+          'Because Earth spins faster in space',
         ],
         correctIndex: 1,
         explanation:
-          'Each 90-minute orbit carries the station into daylight and darkness, adding up to ~16 transitions every day.',
+          'The ISS completes 16 orbits every 24 hours — giving astronauts 16 day/night cycles.',
       },
       {
-        question: 'How do crews keep their body clocks aligned amid rapid light changes?',
+        question: 'How does this affect astronauts’ sleep cycles?',
         options: [
-          'By taking sleeping pills regularly',
-          'By turning off all station lights',
-          'With carefully programmed lighting and schedules',
-          'By sleeping only during daytime passes',
+          'They can’t sleep at all',
+          'They use scheduled lighting to simulate day and night',
+          'They only sleep during sunlight periods',
+          'They stay awake for each orbit',
         ],
-        correctIndex: 2,
+        correctIndex: 1,
         explanation:
-          'Engineers choreograph lighting cues and sleep schedules so circadian rhythms stay on track.',
+          'Astronauts use artificial lighting and strict schedules to maintain circadian rhythm despite rapid day/night transitions.',
       },
       {
-        question: 'What challenge do frequent sunrises pose for spacewalk preparation?',
-        options: [
-          'It interferes with suit communications',
-          'Crews risk losing tools in the dark',
-          'Maintaining alertness becomes harder',
-          'Spacesuits drain power faster',
-        ],
+        question: 'How long is each full orbit of the ISS?',
+        options: ['24 hours', '12 hours', '90 minutes', '45 minutes'],
         correctIndex: 2,
-        explanation: 'Fatigue can build quickly, so planners align tasks to keep astronauts alert for critical work.',
+        explanation: 'It takes about 90 minutes for the ISS to circle the entire planet once.',
       },
     ],
   },
@@ -85,35 +81,35 @@ export const quizzes: LessonQuiz[] = [
     lessonId: 3,
     questions: [
       {
-        question: 'What makes the Cupola module unique on the ISS?',
+        question: 'What is the main purpose of the Cupola module?',
         options: [
-          'It houses the main airlock',
-          'It offers a seven-window panoramic observatory',
-          'It stores emergency water supplies',
-          'It is the only sleeping quarters',
+          'Astronaut relaxation only',
+          'Observing Earth and controlling robotic arms',
+          'Solar energy generation',
+          'Launching small satellites',
         ],
         correctIndex: 1,
         explanation:
-          'The Cupola’s seven windows, including the largest flown on a spacecraft, give astronauts sweeping views.',
+          'The Cupola is a 7-window observatory used for monitoring space operations and viewing Earth.',
       },
       {
-        question: 'Which tool is commonly operated from the Cupola?',
-        options: ['The Canadarm2 robotic arm', 'The Soyuz escape capsule', 'The primary telescope', 'The oxygen recycler'],
+        question: 'What makes the Cupola special to astronauts?',
+        options: [
+          'It’s the largest window in space',
+          'It provides the only sleeping area',
+          'It’s used for docking spacecraft',
+          'It powers the station',
+        ],
         correctIndex: 0,
         explanation:
-          'Astronauts control Canadarm2 from the Cupola, using its views to maneuver visiting spacecraft.',
+          'The Cupola’s panoramic windows provide astronauts with the most breathtaking view of Earth from orbit.',
       },
       {
-        question: 'Why are Cupola photos valuable for Earth scientists?',
-        options: [
-          'They provide uninterrupted video streams',
-          'They track natural events like storms and volcanoes',
-          'They are used to calibrate telescopes',
-          'They map the Moon’s surface',
-        ],
-        correctIndex: 1,
+        question: 'Which material protects the Cupola windows from micrometeoroids?',
+        options: ['Carbon fiber', 'Transparent aluminum', 'Fused silica and borosilicate glass', 'Polycarbonate'],
+        correctIndex: 2,
         explanation:
-          'Astronaut imagery documents hurricanes, wildfires, and other events that help researchers on the ground.',
+          'The Cupola’s windows are made from multiple layers of fused silica and borosilicate glass for strength and clarity.',
       },
     ],
   },
@@ -121,40 +117,35 @@ export const quizzes: LessonQuiz[] = [
     lessonId: 4,
     questions: [
       {
-        question: 'What triggers auroras visible from the ISS?',
+        question: 'What causes auroras seen from the ISS?',
         options: [
-          'Lightning in Earth’s lower atmosphere',
-          'Charged solar particles colliding with atmospheric atoms',
-          'Reflections from city lights',
-          'Volcanic ash glowing at night',
+          'Reflected sunlight from clouds',
+          'Charged particles from the Sun interacting with Earth’s magnetic field',
+          'Radiation from the Moon',
+          'Burning atmospheric gases',
         ],
         correctIndex: 1,
         explanation:
-          'Solar wind particles funnel along magnetic field lines and excite atmospheric gases, producing auroras.',
+          'Auroras form when solar particles hit Earth\'s magnetic field and excite atmospheric gases near the poles.',
       },
       {
-        question: 'Why do auroras appear brightest near the poles?',
+        question: 'From space, how do auroras appear to astronauts?',
         options: [
-          'Earth’s rotation drags clouds northward',
-          'Magnetic field lines converge there',
-          'There is less ozone overhead',
-          'The ISS flies lower at the poles',
+          'Flat glowing patches',
+          'Massive ribbons of light wrapping around Earth',
+          'Small dots near the poles',
+          'Invisible infrared bands',
         ],
         correctIndex: 1,
         explanation:
-          'The planet’s magnetic field channels particles toward the poles, concentrating the light shows.',
+          'Auroras appear as giant ribbons or curtains of light that stretch over thousands of kilometers.',
       },
       {
-        question: 'How do aurora observations from orbit help scientists?',
-        options: [
-          'They allow pilots to avoid turbulence',
-          'They reveal the temperature of the ocean',
-          'They show how solar activity affects Earth’s atmosphere',
-          'They predict meteor showers',
-        ],
+        question: 'Which colors are most common in auroras?',
+        options: ['Blue and yellow', 'Red and purple', 'Green and pink', 'Orange and white'],
         correctIndex: 2,
         explanation:
-          'Aurora studies improve understanding of how space weather interacts with the atmosphere and magnetosphere.',
+          'Green and pink are the most common colors, caused by oxygen and nitrogen interactions in the upper atmosphere.',
       },
     ],
   },
@@ -198,35 +189,35 @@ export const quizzes: LessonQuiz[] = [
     lessonId: 6,
     questions: [
       {
-        question: 'Why do astronauts feel weightless aboard the ISS?',
+        question: 'What keeps the ISS from falling to Earth?',
         options: [
-          'Gravity is weaker in orbit',
-          'The station spins to cancel gravity',
-          'They free-fall around Earth at the same rate as the station',
-          'There is no gravity above the atmosphere',
+          'Centrifugal force from rotation',
+          'Its forward velocity and gravity in balance',
+          'Repulsion from Earth’s magnetic field',
+          'Constant rocket thrust',
+        ],
+        correctIndex: 1,
+        explanation:
+          'The ISS is moving fast enough that gravity bends its path around Earth, keeping it in orbit.',
+      },
+      {
+        question: 'What happens to the ISS when its orbit decays?',
+        options: [
+          'It speeds up automatically',
+          'It slowly drifts higher',
+          'It reenters the atmosphere',
+          'It freezes in place',
         ],
         correctIndex: 2,
         explanation:
-          'The ISS and crew are in continuous free fall, so they float together despite Earth’s gravity still acting.',
+          'Atmospheric drag slowly lowers its orbit, and occasional “reboosts” are needed to prevent reentry.',
       },
       {
-        question: 'What balances the pull of gravity to keep the ISS in orbit?',
-        options: ['Solar radiation pressure', 'Its forward orbital speed', 'Magnetic forces', 'Thrusters firing constantly'],
-        correctIndex: 1,
+        question: 'What is the term for the ISS’s orbital free-fall condition?',
+        options: ['Hypergravity', 'Antigravity', 'Microgravity', 'Zero-mass zone'],
+        correctIndex: 2,
         explanation:
-          'The station’s tremendous velocity keeps it moving forward fast enough to “miss” Earth as it falls.',
-      },
-      {
-        question: 'Why are reboost burns necessary for orbital maintenance?',
-        options: [
-          'To realign the station with the Moon',
-          'To counteract atmospheric drag that slowly lowers its orbit',
-          'To keep solar panels pointed at the Sun',
-          'To test spacecraft thrusters',
-        ],
-        correctIndex: 1,
-        explanation:
-          'Even the thin atmosphere at 400 km tugs on the ISS, so occasional burns restore its altitude.',
+          'Astronauts experience microgravity because both they and the ISS are falling together around Earth.',
       },
     ],
   },
