@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { Lesson } from '../data/lessons.ts';
 import { lessonData } from '../data/lessons.ts';
+import LessonVisual from '../components/education/LessonVisual';
 
 const EducationPage = () => {
   const navigate = useNavigate();
   const [completedLessons, setCompletedLessons] = useState<Set<number>>(new Set());
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [isModalVisible, setModalVisible] = useState(false);
+  const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
+  const [navigationDirection, setNavigationDirection] = useState(0);
+
+  const selectedLesson: Lesson | null = useMemo(
+    () => (selectedLessonIndex !== null ? lessonData[selectedLessonIndex] : null),
+    [selectedLessonIndex],
+  );
 
   const handleLessonClose = () => {
-    setModalVisible(false);
+    setSelectedLessonIndex(null);
   };
 
   useEffect(() => {
@@ -30,41 +37,36 @@ const EducationPage = () => {
     };
   }, [selectedLesson]);
 
-  useEffect(() => {
-    if (!selectedLesson) {
-      return;
-    }
-
-    const animationFrame = window.requestAnimationFrame(() => setModalVisible(true));
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-    };
-  }, [selectedLesson]);
-
-  useEffect(() => {
-    if (isModalVisible || !selectedLesson) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setSelectedLesson(null);
-    }, 220);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [isModalVisible, selectedLesson]);
-
   const handleBackToExplorer = () => {
     navigate('/');
   };
 
   const handleLessonSelect = (lesson: Lesson) => {
-    setSelectedLesson(lesson);
+    const index = lessonData.findIndex((item) => item.id === lesson.id);
+    if (index === -1) {
+      return;
+    }
+    setNavigationDirection(0);
+    setSelectedLessonIndex(index);
     setCompletedLessons((prev) => {
-      if (prev.has(lesson.id)) {
-        return prev;
-      }
+      const updated = new Set(prev);
+      updated.add(lesson.id);
+      return updated;
+    });
+  };
+
+  const handleLessonNavigate = (direction: 'next' | 'previous') => {
+    if (selectedLessonIndex === null) {
+      return;
+    }
+
+    const delta = direction === 'next' ? 1 : -1;
+    setNavigationDirection(delta);
+
+    const newIndex = (selectedLessonIndex + delta + lessonData.length) % lessonData.length;
+    const lesson = lessonData[newIndex];
+    setSelectedLessonIndex(newIndex);
+    setCompletedLessons((prev) => {
       const updated = new Set(prev);
       updated.add(lesson.id);
       return updated;
@@ -74,6 +76,43 @@ const EducationPage = () => {
   const totalLessons = lessonData.length;
   const completedCount = completedLessons.size;
   const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  const modalBackdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+    exit: { opacity: 0 },
+  };
+
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.95,
+      transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
+    },
+  };
+
+  const contentVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 60 : direction < 0 ? -60 : 0,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -60 : direction < 0 ? 60 : 0,
+      opacity: 0,
+      transition: { duration: 0.25, ease: [0.4, 0, 1, 1] },
+    }),
+  } as const;
 
   return (
     <div className="education-page flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-sky-100">
@@ -128,7 +167,7 @@ const EducationPage = () => {
           {lessonData.map((lesson) => {
             const isComplete = completedLessons.has(lesson.id);
             return (
-              <article
+              <motion.article
                 key={lesson.id}
                 role="button"
                 tabIndex={0}
@@ -139,7 +178,10 @@ const EducationPage = () => {
                     handleLessonSelect(lesson);
                   }
                 }}
-                className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900/90 via-slate-950/70 to-slate-900/80 p-8 shadow-[0_35px_90px_-55px_rgba(59,130,246,0.85)] transition-transform duration-500 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-[0_45px_140px_-70px_rgba(56,189,248,1)]"
+                className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900/90 via-slate-950/70 to-slate-900/80 p-8 shadow-[0_35px_90px_-55px_rgba(59,130,246,0.85)] transition-colors duration-500 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                whileHover={{ y: -10, scale: 1.02, rotateX: 1.5, rotateY: -1.5 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 18 }}
               >
                 <div
                   className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
@@ -170,7 +212,7 @@ const EducationPage = () => {
                     </span>
                   </div>
                 </div>
-              </article>
+              </motion.article>
             );
           })}
         </section>
@@ -191,50 +233,122 @@ const EducationPage = () => {
         </section>
       </main>
 
-      {selectedLesson && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center p-4">
-          <div
-            role="presentation"
-            onClick={handleLessonClose}
-            aria-hidden="true"
-            className={`absolute inset-0 h-full w-full cursor-pointer bg-slate-950/80 backdrop-blur-sm transition-opacity duration-300 ${isModalVisible ? 'opacity-100' : 'opacity-0'}`}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="selected-lesson-title"
-            className={`relative z-10 w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-800/70 bg-slate-950/95 p-10 shadow-[0_55px_160px_-80px_rgba(56,189,248,1)] transition-all duration-300 ease-out ${isModalVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
-            onClick={(event) => event.stopPropagation()}
+      <AnimatePresence>
+        {selectedLesson && (
+          <motion.div
+            className="fixed inset-0 z-30 flex items-center justify-center p-4"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={modalBackdropVariants}
           >
-            <button
-              type="button"
+            <motion.div
+              role="presentation"
               onClick={handleLessonClose}
-              className="absolute right-6 top-6 rounded-full border border-slate-700/80 bg-slate-900/80 p-2 text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-              aria-label="Close"
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full cursor-pointer bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="selected-lesson-title"
+              className="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-slate-800/70 bg-slate-950/95 shadow-[0_55px_160px_-80px_rgba(56,189,248,1)]"
+              variants={modalVariants}
+              onClick={(event) => event.stopPropagation()}
             >
-              ×
-            </button>
-            <div className="flex flex-col gap-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.45em] text-cyan-300/70">Lesson {selectedLesson.id.toString().padStart(2, '0')}</p>
-                <h3 id="selected-lesson-title" className="mt-4 text-3xl font-semibold text-sky-100">
-                  {selectedLesson.title}
-                </h3>
+              <div className="relative flex flex-col gap-6 px-10 pb-10 pt-12 sm:pt-14">
+                <button
+                  type="button"
+                  onClick={handleLessonClose}
+                  className="absolute right-8 top-6 rounded-full border border-cyan-400/60 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.3)] transition hover:scale-105 hover:border-cyan-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                  aria-label="Close"
+                >
+                  ❌
+                </button>
+                <AnimatePresence mode="wait" custom={navigationDirection}>
+                  <motion.div
+                    key={selectedLesson.id}
+                    className="flex flex-col gap-10"
+                    variants={contentVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    custom={navigationDirection}
+                  >
+                    <header className="flex flex-col gap-3">
+                      <p className="text-xs uppercase tracking-[0.45em] text-cyan-300/70">
+                        Lesson {selectedLesson.id.toString().padStart(2, '0')}
+                      </p>
+                      <h3 id="selected-lesson-title" className="text-3xl font-semibold text-sky-100 sm:text-4xl">
+                        {selectedLesson.title}
+                      </h3>
+                    </header>
+                    <div className="flex flex-col gap-10 lg:flex-row">
+                      <div className="lg:w-1/2">
+                        <LessonVisual visual={selectedLesson.visual} />
+                      </div>
+                      <div className="flex flex-1 flex-col gap-6 text-sm leading-7 text-slate-300">
+                        <div className="space-y-5">
+                          {selectedLesson.details.split('\n\n').map((paragraph) => (
+                            <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+                          ))}
+                        </div>
+                        <div className="flex flex-col gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 p-6">
+                          <span className="text-xs font-semibold uppercase tracking-[0.4em] text-cyan-300/70">
+                            Key Facts
+                          </span>
+                          <ul className="grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+                            {selectedLesson.facts.map((fact) => (
+                              <li
+                                key={fact}
+                                className="flex items-start gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 shadow-[0_15px_45px_-35px_rgba(34,211,238,0.6)]"
+                              >
+                                <span aria-hidden="true" className="mt-1 text-lg text-cyan-300">
+                                  ✨
+                                </span>
+                                <span>{fact}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="rounded-3xl border border-amber-400/30 bg-amber-500/10 p-5 text-amber-100 shadow-[0_25px_60px_-45px_rgba(251,191,36,0.5)]">
+                            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200/80">
+                              💡 Did You Know?
+                            </p>
+                            <p className="mt-2 text-base text-amber-50/90">{selectedLesson.funFact}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <footer className="flex flex-col gap-4 rounded-[2rem] border border-slate-800/60 bg-slate-950/80 p-6 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-semibold tracking-[0.4em] text-cyan-300/70">
+                        Lesson {selectedLesson.id} of {totalLessons} ✅
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <motion.button
+                          type="button"
+                          onClick={() => handleLessonNavigate('previous')}
+                          className="rounded-full border border-slate-800/80 bg-slate-900/70 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:-translate-x-1 hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                          whileTap={{ scale: 0.96 }}
+                        >
+                          ⬅ Previous Lesson
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => handleLessonNavigate('next')}
+                          className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-100 transition hover:translate-x-1 hover:border-cyan-300 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                          whileTap={{ scale: 0.96 }}
+                        >
+                          Next Lesson ➡
+                        </motion.button>
+                      </div>
+                    </footer>
+                  </motion.div>
+                </AnimatePresence>
               </div>
-              <div className="flex flex-col gap-6 md:flex-row md:gap-8">
-                <div className="flex-1 space-y-5 text-sm leading-7 text-slate-300">
-                  {selectedLesson.details.split('\n\n').map((paragraph) => (
-                    <p key={paragraph.slice(0, 40)}>{paragraph}</p>
-                  ))}
-                </div>
-                <div className="flex h-40 w-full max-w-xs flex-none items-center justify-center rounded-2xl border border-slate-800/70 bg-gradient-to-br from-sky-900/40 via-slate-900/30 to-slate-950/60 text-xs uppercase tracking-[0.35em] text-slate-400">
-                  Illustration incoming
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
