@@ -252,94 +252,125 @@ const EducationPage = () => {
               role="dialog"
               aria-modal="true"
               aria-labelledby="selected-lesson-title"
-              className="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] border border-slate-800/70 bg-slate-950/95 shadow-[0_55px_160px_-80px_rgba(56,189,248,1)]"
+              className="relative z-10 flex h-[95vh] w-[95vw] max-w-6xl flex-col overflow-hidden rounded-[2.5rem] border border-slate-800/70 bg-slate-950/95 shadow-[0_55px_160px_-80px_rgba(56,189,248,1)] sm:h-[85vh] sm:w-[85vw] lg:h-[80vh] lg:w-[80vw]"
               variants={modalVariants}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative flex flex-col gap-6 px-10 pb-10 pt-12 sm:pt-14">
-                <button
-                  type="button"
-                  onClick={handleLessonClose}
-                  className="absolute right-8 top-6 rounded-full border border-cyan-400/60 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.3)] transition hover:scale-105 hover:border-cyan-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-                  aria-label="Close"
-                >
-                  ❌
-                </button>
-                <AnimatePresence mode="wait" custom={navigationDirection}>
-                  <motion.div
-                    key={selectedLesson.id}
-                    className="flex flex-col gap-10"
-                    variants={contentVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    custom={navigationDirection}
+              <div className="flex h-full flex-col">
+                <header className="relative flex flex-col gap-3 border-b border-slate-800/50 px-10 pb-6 pt-12 sm:pt-14">
+                  <button
+                    type="button"
+                    onClick={handleLessonClose}
+                    className="absolute right-8 top-6 rounded-full border border-cyan-400/60 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.3)] transition hover:scale-105 hover:border-cyan-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                    aria-label="Close"
                   >
-                    <header className="flex flex-col gap-3">
+                    ❌
+                  </button>
+                  <AnimatePresence mode="wait" custom={navigationDirection}>
+                    <motion.div
+                      key={selectedLesson.id}
+                      variants={contentVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      custom={navigationDirection}
+                      className="flex flex-col gap-3"
+                    >
                       <p className="text-xs uppercase tracking-[0.45em] text-cyan-300/70">
                         Lesson {selectedLesson.id.toString().padStart(2, '0')}
                       </p>
                       <h3 id="selected-lesson-title" className="text-3xl font-semibold text-sky-100 sm:text-4xl">
                         {selectedLesson.title}
                       </h3>
-                    </header>
-                    <div className="flex flex-col gap-10 lg:flex-row">
-                      <div className="lg:w-1/2">
-                        <LessonVisual visual={selectedLesson.visual} />
-                      </div>
-                      <div className="flex flex-1 flex-col gap-6 text-sm leading-7 text-slate-300">
-                        <div className="space-y-5">
-                          {selectedLesson.details.split('\n\n').map((paragraph) => (
-                            <p key={paragraph.slice(0, 40)}>{paragraph}</p>
-                          ))}
-                        </div>
-                        <div className="flex flex-col gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 p-6">
-                          <span className="text-xs font-semibold uppercase tracking-[0.4em] text-cyan-300/70">
-                            Key Facts
-                          </span>
-                          <ul className="grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
-                            {selectedLesson.facts.map((fact) => (
-                              <li
-                                key={fact}
-                                className="flex items-start gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 shadow-[0_15px_45px_-35px_rgba(34,211,238,0.6)]"
-                              >
-                                <span aria-hidden="true" className="mt-1 text-lg text-cyan-300">
-                                  ✨
-                                </span>
-                                <span>{fact}</span>
-                              </li>
+                    </motion.div>
+                  </AnimatePresence>
+                </header>
+                <AnimatePresence mode="wait" custom={navigationDirection}>
+                  <motion.div
+                    key={`${selectedLesson.id}-content`}
+                    variants={contentVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    custom={navigationDirection}
+                    className="flex flex-1 flex-col"
+                  >
+                    <div className="scrollable-modal flex-1 space-y-10 overflow-y-auto px-10 py-8 sm:px-12">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-col gap-10 lg:flex-row"
+                      >
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className="lg:w-1/2"
+                        >
+                          <LessonVisual visual={selectedLesson.visual} />
+                        </motion.div>
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className="flex flex-1 flex-col gap-6 text-sm leading-7 text-slate-300"
+                        >
+                          <div className="space-y-5">
+                            {selectedLesson.details.split('\n\n').map((paragraph) => (
+                              <p key={paragraph.slice(0, 40)}>{paragraph}</p>
                             ))}
-                          </ul>
-                          <div className="rounded-3xl border border-amber-400/30 bg-amber-500/10 p-5 text-amber-100 shadow-[0_25px_60px_-45px_rgba(251,191,36,0.5)]">
-                            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200/80">
-                              💡 Did You Know?
-                            </p>
-                            <p className="mt-2 text-base text-amber-50/90">{selectedLesson.funFact}</p>
                           </div>
-                        </div>
-                      </div>
+                          <div className="flex flex-col gap-4 rounded-3xl border border-slate-800/60 bg-slate-900/60 p-6">
+                            <span className="text-xs font-semibold uppercase tracking-[0.4em] text-cyan-300/70">
+                              Key Facts
+                            </span>
+                            <ul className="grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+                              {selectedLesson.facts.map((fact) => (
+                                <li
+                                  key={fact}
+                                  className="flex items-start gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 shadow-[0_15px_45px_-35px_rgba(34,211,238,0.6)]"
+                                >
+                                  <span aria-hidden="true" className="mt-1 text-lg text-cyan-300">
+                                    ✨
+                                  </span>
+                                  <span>{fact}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="rounded-3xl border border-amber-400/30 bg-amber-500/10 p-5 text-amber-100 shadow-[0_25px_60px_-45px_rgba(251,191,36,0.5)]">
+                              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200/80">
+                                💡 Did You Know?
+                              </p>
+                              <p className="mt-2 text-base text-amber-50/90">{selectedLesson.funFact}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </motion.div>
                     </div>
-                    <footer className="flex flex-col gap-4 rounded-[2rem] border border-slate-800/60 bg-slate-950/80 p-6 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-semibold tracking-[0.4em] text-cyan-300/70">
-                        Lesson {selectedLesson.id} of {totalLessons} ✅
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <motion.button
-                          type="button"
-                          onClick={() => handleLessonNavigate('previous')}
-                          className="rounded-full border border-slate-800/80 bg-slate-900/70 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:-translate-x-1 hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-                          whileTap={{ scale: 0.96 }}
-                        >
-                          ⬅ Previous Lesson
-                        </motion.button>
-                        <motion.button
-                          type="button"
-                          onClick={() => handleLessonNavigate('next')}
-                          className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-100 transition hover:translate-x-1 hover:border-cyan-300 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-                          whileTap={{ scale: 0.96 }}
-                        >
-                          Next Lesson ➡
-                        </motion.button>
+                    <footer className="border-t border-slate-800/60 px-10 py-8">
+                      <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-800/60 bg-slate-950/80 p-6 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm font-semibold tracking-[0.4em] text-cyan-300/70">
+                          Lesson {selectedLesson.id} of {totalLessons} ✅
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <motion.button
+                            type="button"
+                            onClick={() => handleLessonNavigate('previous')}
+                            className="rounded-full border border-slate-800/80 bg-slate-900/70 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:-translate-x-1 hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                            whileTap={{ scale: 0.96 }}
+                          >
+                            ⬅ Previous Lesson
+                          </motion.button>
+                          <motion.button
+                            type="button"
+                            onClick={() => handleLessonNavigate('next')}
+                            className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-100 transition hover:translate-x-1 hover:border-cyan-300 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                            whileTap={{ scale: 0.96 }}
+                          >
+                            Next Lesson ➡
+                          </motion.button>
+                        </div>
                       </div>
                     </footer>
                   </motion.div>
