@@ -40,4 +40,68 @@ export const lessonData: Lesson[] = [
       'Auroras ignite when charged particles from the Sun stream along Earth’s magnetic field and collide with atoms in the upper atmosphere. From the ISS, astronauts often watch these storms of light ripple beneath them like neon curtains draped over the poles. Greens, purples, and reds shimmer along the horizon, sometimes stretching thousands of kilometers across.\n\nScientists study auroras from orbit to understand how solar activity influences our planet. Observations from the station complement measurements from satellites and ground-based telescopes, offering unique vantage points on the shape and movement of these glowing ribbons.\n\nFor the crew, aurora sightings are a cherished perk of orbital life. Many describe the experience as a reminder of Earth’s delicate shield against the harsh environment of space, reinforcing the importance of monitoring our planet’s magnetic and atmospheric health.',
     explorerFeature: 'aurora',
   },
+  {
+    id: 5,
+    title: 'Life on the ISS',
+    description: 'Discover how astronauts eat, sleep, and live in microgravity.',
+    details:
+      'Astronauts aboard the ISS live in microgravity, where every daily task becomes a challenge. Sleeping requires sleeping bags strapped to walls, food must be eaten from sealed pouches, and exercise is critical to avoid muscle loss. This lesson explores daily life in orbit.',
+    explorerFeature: 'life-on-iss',
+  },
+  {
+    id: 6,
+    title: 'Why the ISS Doesn’t Fall',
+    description: 'Understand the physics behind the ISS staying in orbit.',
+    details:
+      'The ISS is constantly falling toward Earth, but because it moves forward so fast, it keeps missing the planet. This is called free fall or orbit. Gravity and velocity balance each other, keeping the ISS in stable orbit.',
+    explorerFeature: 'why-iss-doesnt-fall',
+  },
+  {
+    id: 7,
+    title: 'International Crew',
+    description: 'Learn about the astronauts and nations that work together on the ISS.',
+    details:
+      'The ISS is a symbol of global cooperation, with contributions from NASA (USA), Roscosmos (Russia), ESA (Europe), JAXA (Japan), and CSA (Canada). Astronauts from many nations rotate aboard, working together in science, engineering, and exploration.',
+    explorerFeature: 'international-crew',
+  },
+  {
+    id: 8,
+    title: 'Experiments in Microgravity',
+    description: 'See why the ISS is the world’s most unique science lab.',
+    details:
+      'The ISS is used to study how microgravity affects biology, physics, medicine, and materials. Experiments range from protein crystallization to fluid dynamics, offering insights impossible to achieve on Earth.',
+    explorerFeature: 'microgravity-experiments',
+  },
+  {
+    id: 9,
+    title: 'Earth Observation',
+    description: 'Explore how astronauts and instruments monitor Earth from space.',
+    details:
+      'From its vantage point, the ISS provides an unparalleled view of Earth. Astronauts capture breathtaking images, while instruments track storms, wildfires, deforestation, and climate change.',
+    explorerFeature: 'earth-observation',
+  },
+  {
+    id: 10,
+    title: 'Communications with Earth',
+    description: 'How the ISS stays connected with mission control and families.',
+    details:
+      'The ISS relies on satellites like NASA’s Tracking and Data Relay Satellites (TDRS) to stay in constant contact with Earth. Data, voice, and video are transmitted to mission control, while astronauts also have access to email and video calls with families.',
+    explorerFeature: 'communications',
+  },
+  {
+    id: 11,
+    title: 'Docking and Visiting Vehicles',
+    description: 'Learn how spacecraft like Dragon and Soyuz dock with the ISS.',
+    details:
+      'The ISS receives cargo and crew from visiting spacecraft such as SpaceX Dragon, Northrop Grumman Cygnus, and Soyuz. Docking can be automatic or manually controlled, requiring extreme precision as spacecraft travel thousands of km/h.',
+    explorerFeature: 'docking',
+  },
+  {
+    id: 12,
+    title: 'Future of the ISS',
+    description: 'Discover what’s next for the station and space habitats.',
+    details:
+      'The ISS has been in operation since 1998, but its mission will eventually transition to commercial space stations and deep space exploration. New concepts include private modules, lunar Gateway, and Mars preparation.',
+    explorerFeature: 'future-of-iss',
+  },
 ];
