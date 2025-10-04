@@ -326,7 +326,7 @@ function Explorer() {
         allowWeightlessHud ? 'weightless-hud' : ''
       }`}>
         <section className="flex w-full max-w-6xl flex-1 flex-col gap-6 lg:flex-row">
-          <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/60 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
+          <div className="flex flex-1 flex-col rounded-3xl border border-slate-800/60 bg-slate-900/60 shadow-[0_35px_120px_-50px_rgba(56,189,248,0.45)]">
             <div className="relative flex-1 overflow-hidden p-3">
               <ISSGlobe
                 viewMode={viewMode}
@@ -346,7 +346,9 @@ function Explorer() {
                 fastOverlaySuspended={fastOverlaySuspended}
               />
             </div>
-            <div className="w-full rounded-b-lg border-t border-sky-600 bg-sky-900/70 px-4 py-2 text-center text-sky-100">
+            <div
+              className="w-full rounded-b-3xl border-t border-sky-600/70 bg-gradient-to-r from-sky-800/80 to-sky-900/90 px-2 py-1 text-center text-xs font-medium uppercase tracking-[0.35em] text-sky-100 shadow-lg sm:px-4 sm:py-2 sm:text-sm"
+            >
               Streaming orbit data via CelesTrak.
             </div>
           </div>
