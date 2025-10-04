@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import ISSGlobe from '../components/ISSGlobe.jsx';
 import TimeControls from '../components/TimeControls.jsx';
 import HudMenuPanel from '../components/HudMenuPanel.tsx';
+import OrbitBanner from '../ui/OrbitBanner.tsx';
+import {
+  ensureTLEFresh,
+  getOrbitStatus,
+  loadCachedTLE,
+} from '../data/orbitService.ts';
 import {
   FALLBACK_TLE,
   FALLBACK_SPEED_KMH,
   buildFutureTrack,
   buildGroundTrack,
   createSatrec,
-  fetchLatestTle,
   getScenePositionAt,
 } from '../utils/iss.ts';
 import { useTimeStore } from '../state/timeStore.tsx';
@@ -72,9 +77,9 @@ function Explorer() {
   const { currentTime, mode, speed, seekTo, stepBy, togglePlay } = useTimeStore();
   const navigate = useNavigate();
 
-  const [satrec, setSatrec] = useState(null);
+  const [satrec, setSatrec] = useState(() => createSatrec(FALLBACK_TLE));
   const [tleTimestamp, setTleTimestamp] = useState(null);
-  const [error, setError] = useState(null);
+  const [orbitStatus, setOrbitStatus] = useState(() => getOrbitStatus());
   const [issPosition, setIssPosition] = useState(null);
   const [trailPoints, setTrailPoints] = useState([]);
   const [futurePoints, setFuturePoints] = useState([]);
@@ -99,29 +104,42 @@ function Explorer() {
   const allowWeightlessHud = weightlessnessEnabled && !reducedMotion && !isInteracting;
 
   useEffect(() => {
-    let cancelled = false;
-    const loadTle = async () => {
-      try {
-        const tle = await fetchLatestTle();
-        if (cancelled) return;
-        setSatrec(createSatrec(tle));
-        setTleTimestamp(Date.now());
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) {
-          setError('Unable to retrieve updated orbital elements. Falling back to last known state.');
-          setSatrec((current) => current ?? createSatrec(FALLBACK_TLE));
-          console.warn('Using cached or fallback ISS orbit after fetch failure.');
-        }
+    const cached = loadCachedTLE();
+    if (cached) {
+      setSatrec(createSatrec({ line1: cached.line1, line2: cached.line2 }));
+      setTleTimestamp(cached.t);
+      setOrbitStatus((current) => ({ ...current, updatedAt: cached.t }));
+    }
+
+    const handleStatus = (event) => {
+      const nextStatus = event?.detail;
+      if (!nextStatus) {
+        return;
+      }
+      setOrbitStatus(nextStatus);
+      const currentCache = loadCachedTLE();
+      if (currentCache) {
+        setSatrec(createSatrec({ line1: currentCache.line1, line2: currentCache.line2 }));
+        setTleTimestamp(currentCache.t);
+      } else if (nextStatus.status === 'stale') {
+        setSatrec((current) => current ?? createSatrec(FALLBACK_TLE));
+        setTleTimestamp(null);
       }
     };
 
-    loadTle();
-    const interval = setInterval(loadTle, 60 * 60 * 1000);
+    window.addEventListener('orbit:status', handleStatus);
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      window.removeEventListener('orbit:status', handleStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    ensureTLEFresh();
+    const interval = window.setInterval(() => {
+      ensureTLEFresh();
+    }, 10 * 60 * 1000);
+    return () => {
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -212,10 +230,13 @@ function Explorer() {
     setIsInteracting(value);
   }, []);
 
-  const statusMessage = error
-    ? error
-    : mode === 'live'
-      ? 'Tracking nominal. Streaming live orbit data.'
+  const statusMessage =
+    mode === 'live'
+      ? orbitStatus.status === 'fresh'
+        ? 'Tracking nominal. Streaming live orbit data.'
+        : orbitStatus.status === 'cached'
+          ? 'Tracking with cached orbital elements while live updates retry.'
+          : 'Orbital data is stale. Displaying last known trajectory until updates resume.'
       : 'Simulated playback active. Speed controls adjust orbit progression.';
 
   const uiClassName = `flex min-h-screen flex-col bg-slate-950 text-slate-100`;
@@ -346,11 +367,12 @@ function Explorer() {
                 fastOverlaySuspended={fastOverlaySuspended}
               />
             </div>
-            <div
-              className="w-full rounded-b-3xl border-t border-sky-600/70 bg-gradient-to-r from-sky-800/80 to-sky-900/90 px-2 py-1 text-center text-xs font-medium uppercase tracking-[0.35em] text-sky-100 shadow-lg sm:px-4 sm:py-2 sm:text-sm"
-            >
-              Streaming orbit data via CelesTrak.
-            </div>
+            {orbitStatus.status === 'fresh' && (
+              <div className="w-full rounded-b-3xl border-t border-sky-600/70 bg-gradient-to-r from-sky-800/80 to-sky-900/90 px-2 py-1 text-center text-xs font-medium uppercase tracking-[0.35em] text-sky-100 shadow-lg sm:px-4 sm:py-2 sm:text-sm">
+                Streaming orbit data via CelesTrak.
+              </div>
+            )}
+            <OrbitBanner />
           </div>
 
           <aside className="flex w-full max-w-lg flex-col gap-6 rounded-3xl border border-slate-800/60 bg-slate-900/70 p-6">
@@ -420,14 +442,9 @@ function Explorer() {
               <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[0.8rem] text-emerald-200">
                 {statusMessage}
               </p>
-              {error && (
-                <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-[0.8rem] text-amber-200">
-                  Using cached orbital data while updates retry in the background.
-                </p>
-              )}
               <p className="text-[0.75rem] text-slate-500">
-                Time controls support keyboard shortcuts: space toggles playback, ← / → adjust time, and Shift increases
-                the adjustment span.
+                Time controls support keyboard shortcuts: space toggles playback, ← / → adjust time, and Shift increases the
+                adjustment span.
               </p>
             </div>
           </aside>
