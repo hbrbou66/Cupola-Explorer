@@ -285,10 +285,10 @@ const EducationPage = () => {
                   animate="center"
                   exit="exit"
                   custom={navigationDirection}
-                  className="grow overflow-y-auto overscroll-contain scroll-smooth px-6 py-6 space-y-10 modal-scroll"
+                  className="grow overflow-y-auto overscroll-contain scroll-smooth px-6 py-6 space-y-10 modal-scroll lesson-scrollable-content"
                 >
                   <section className="lesson-section">
-                    <LessonVisual visual={selectedLesson.visual} />
+                    <LessonVisual lesson={selectedLesson} />
                   </section>
 
                   <section className="lesson-section grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -301,7 +301,7 @@ const EducationPage = () => {
                       <h3 className="text-sky-300/90 text-sm tracking-widest uppercase mb-3">Key Facts</h3>
                       <ul className="grid gap-3 md:grid-cols-1">
                         {selectedLesson.facts.map((fact) => (
-                          <li key={fact} className="rounded-xl border border-sky-700/40 bg-slate-900/50 px-3 py-2">
+                          <li key={fact} className="fact-item border border-sky-700/40 text-sky-100/90">
                             {fact}
                           </li>
                         ))}
