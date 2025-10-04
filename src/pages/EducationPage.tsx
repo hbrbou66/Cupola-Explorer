@@ -57,10 +57,32 @@ const EducationPage = () => {
     }
   });
 
-  const selectedLesson: Lesson | null = useMemo(
-    () => (selectedLessonIndex !== null ? lessonData[selectedLessonIndex] : null),
-    [selectedLessonIndex],
-  );
+  const selectedLesson: Lesson | null = useMemo(() => {
+    if (selectedLessonIndex === null) {
+      return null;
+    }
+
+    const lesson = lessonData[selectedLessonIndex];
+
+    if (!lesson) {
+      console.error('Selected lesson index is out of bounds', {
+        selectedLessonIndex,
+        lessonDataLength: lessonData.length,
+      });
+      return null;
+    }
+
+    return lesson;
+  }, [selectedLessonIndex]);
+
+  useEffect(() => {
+    if (!selectedLesson) {
+      return;
+    }
+
+    console.log('Selected lesson data for modal:', selectedLesson);
+    console.log(selectedLesson);
+  }, [selectedLesson]);
 
   const selectedQuiz = useMemo(
     () => (selectedLesson ? getQuizByLessonId(selectedLesson.id) ?? null : null),
@@ -95,6 +117,9 @@ const EducationPage = () => {
   const handleLessonSelect = (lesson: Lesson) => {
     const index = lessonData.findIndex((item) => item.id === lesson.id);
     if (index === -1) {
+      console.error('Attempted to select a lesson that does not exist in lessonData', {
+        requestedLessonId: lesson.id,
+      });
       return;
     }
     setNavigationDirection(0);
@@ -124,6 +149,15 @@ const EducationPage = () => {
 
     const newIndex = (selectedLessonIndex + delta + lessonData.length) % lessonData.length;
     const lesson = lessonData[newIndex];
+    if (!lesson) {
+      console.error('Failed to find lesson data while navigating', {
+        newIndex,
+        selectedLessonIndex,
+        delta,
+        lessonDataLength: lessonData.length,
+      });
+      return;
+    }
     setSelectedLessonIndex(newIndex);
     setLessonProgress((prev) => {
       const existing = prev[lesson.id];

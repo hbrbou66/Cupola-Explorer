@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import type { Lesson } from '../../data/lessons';
 import LessonSceneController from '../LessonSceneController';
 import LessonModel from './LessonModel';
@@ -424,24 +424,44 @@ const CanvasFallback = () => (
   </div>
 );
 
+const MissingModelFallback = () => (
+  <div className="flex h-full w-full items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-[11px] uppercase tracking-[0.4em] text-slate-400">
+    Lesson visual unavailable
+  </div>
+);
+
 const LessonVisual = ({ lesson }: LessonVisualProps) => {
   const config = useMemo(() => mergeSceneConfig(sceneOverrides[lesson.visual]), [lesson.visual]);
+  const hasValidModel = typeof lesson.model === 'string' && lesson.model.trim().length > 0;
+
+  useEffect(() => {
+    if (!hasValidModel) {
+      console.warn('Lesson is missing a valid model path; skipping 3D render.', {
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+      });
+    }
+  }, [hasValidModel, lesson.id, lesson.title]);
 
   return (
     <div
       className="relative h-[26rem] w-full overflow-hidden rounded-[1.75rem] border border-slate-800/60 bg-slate-950/70 shadow-[0_35px_140px_-70px_rgba(56,189,248,0.95)]"
       style={{ backgroundImage: `radial-gradient(140% 120% at 50% 0%, ${config.background}66, rgba(2,6,23,0.92))` }}
     >
-      <Suspense fallback={<CanvasFallback />}>
-        <LessonSceneController lessonId={lesson.id} config={config}>
-          <LessonModel
-            modelPath={lesson.model}
-            baseScale={config.model.scale}
-            position={config.model.position}
-            rotation={config.model.rotation}
-          />
-        </LessonSceneController>
-      </Suspense>
+      {hasValidModel ? (
+        <Suspense fallback={<CanvasFallback />}>
+          <LessonSceneController lessonId={lesson.id} config={config}>
+            <LessonModel
+              modelPath={lesson.model}
+              baseScale={config.model.scale}
+              position={config.model.position}
+              rotation={config.model.rotation}
+            />
+          </LessonSceneController>
+        </Suspense>
+      ) : (
+        <MissingModelFallback />
+      )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/10 to-slate-950/60" />
       <div className="pointer-events-none absolute inset-x-6 bottom-4 flex justify-end text-[10px] uppercase tracking-[0.45em] text-slate-200/80">
         {lesson.title}
