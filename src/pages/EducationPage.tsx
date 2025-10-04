@@ -6,6 +6,11 @@ import { lessonData } from '../data/lessons.ts';
 import LessonVisual from '../components/education/LessonVisual';
 import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
+import {
+  CHALLENGE_RANK_STORAGE_KEY,
+  LESSON_PROGRESS_STORAGE_KEY,
+  type ChallengeRankRecord,
+} from '../utils/storageKeys.ts';
 
 interface LessonProgressEntry {
   viewed: boolean;
@@ -17,9 +22,40 @@ interface LessonProgressEntry {
 
 const EducationPage = () => {
   const navigate = useNavigate();
-  const [lessonProgress, setLessonProgress] = useState<Record<number, LessonProgressEntry>>({});
+  const [lessonProgress, setLessonProgress] = useState<Record<number, LessonProgressEntry>>(() => {
+    if (typeof window === 'undefined') {
+      return {};
+    }
+    const stored = window.localStorage.getItem(LESSON_PROGRESS_STORAGE_KEY);
+    if (!stored) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(stored) as Record<number, LessonProgressEntry>;
+      return parsed ?? {};
+    } catch (error) {
+      console.warn('Failed to parse lesson progress from storage', error);
+      return {};
+    }
+  });
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [navigationDirection, setNavigationDirection] = useState(0);
+  const [challengeRank, setChallengeRank] = useState<ChallengeRankRecord | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const stored = window.localStorage.getItem(CHALLENGE_RANK_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(stored) as ChallengeRankRecord;
+      return parsed ?? null;
+    } catch (error) {
+      console.warn('Failed to parse challenge rank from storage', error);
+      return null;
+    }
+  });
 
   const selectedLesson: Lesson | null = useMemo(
     () => (selectedLessonIndex !== null ? lessonData[selectedLessonIndex] : null),
@@ -104,6 +140,33 @@ const EducationPage = () => {
     });
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(LESSON_PROGRESS_STORAGE_KEY, JSON.stringify(lessonProgress));
+  }, [lessonProgress]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === CHALLENGE_RANK_STORAGE_KEY && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue) as ChallengeRankRecord;
+          setChallengeRank(parsed);
+        } catch (error) {
+          console.warn('Failed to parse updated challenge rank from storage', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const handleQuizComplete = ({ lessonId, percentage, passed }: QuizCompletionPayload) => {
     setLessonProgress((prev) => {
       const existing = prev[lessonId];
@@ -153,6 +216,10 @@ const EducationPage = () => {
     return `Progress ${completedCount} of ${totalLessons} missions. Keep training to certify the rest.`;
   }, [completedCount, totalLessons]);
   const formattedBestScore = bestMissionScore > 0 ? `${Math.round(bestMissionScore)}%` : '—';
+  const isChallengeUnlocked = completedCount >= 3;
+  const challengeSubtitle = isChallengeUnlocked
+    ? 'Ready for the ISS Knowledge Challenge'
+    : 'Complete 3 lessons to unlock the challenge';
 
   const modalBackdropVariants = {
     hidden: { opacity: 0 },
@@ -315,6 +382,54 @@ const EducationPage = () => {
           })}
         </section>
 
+        <motion.section
+          className="relative overflow-hidden rounded-3xl border border-indigo-500/30 bg-slate-950/80 p-8 shadow-[0_55px_160px_-80px_rgba(99,102,241,0.65)]"
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+        >
+          <div
+            className="pointer-events-none absolute -left-24 top-1/2 h-64 w-64 -translate-y-1/2 rounded-full bg-indigo-500/20 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl"
+            aria-hidden="true"
+          />
+          <div className="relative flex flex-col gap-6 text-center sm:text-left sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-xl">
+              <p className="text-xs uppercase tracking-[0.5em] text-indigo-300/80">Special Mission</p>
+              <h3 className="mt-3 text-3xl font-semibold text-sky-100 sm:text-4xl">ISS Knowledge Challenge</h3>
+              <p className="mt-3 text-sm text-slate-300">{challengeSubtitle}</p>
+              {challengeRank && (
+                <p className="mt-2 text-xs uppercase tracking-[0.35em] text-indigo-200/80">
+                  Last Rank: {challengeRank.rank} — {Math.round(challengeRank.percentage)}% accuracy
+                </p>
+              )}
+            </div>
+            <div className="flex w-full max-w-xs flex-col items-center gap-3">
+              {isChallengeUnlocked ? (
+                <motion.button
+                  type="button"
+                  whileHover={{ y: -4 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate('/challenge')}
+                  className="w-full rounded-2xl border border-indigo-400/60 bg-indigo-500/20 px-5 py-3 text-sm font-semibold uppercase tracking-[0.4em] text-indigo-100 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300"
+                >
+                  Start Challenge
+                </motion.button>
+              ) : (
+                <div className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 px-5 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
+                  Complete 3 lessons to unlock
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400">
+                Earn Bronze, Silver, or Gold ranks by acing a 10-question mission that pulls intel from every lesson.
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
         <section className="relative overflow-hidden rounded-3xl border border-cyan-400/30 bg-slate-950/80 p-10 text-center shadow-[0_55px_160px_-80px_rgba(56,189,248,1)]">
           <div
             className="pointer-events-none absolute -inset-1 rounded-[2rem] bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-purple-500/20 blur-3xl"
@@ -473,4 +588,3 @@ const EducationPage = () => {
 };
 
 export default EducationPage;
-

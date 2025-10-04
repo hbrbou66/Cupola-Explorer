@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sparkles } from '@react-three/drei';
 import type { Group } from 'three';
 import type { QuizQuestion } from '../../data/quizzes.ts';
 
@@ -17,6 +16,7 @@ interface QuizModuleProps {
   lessonId: number;
   questions: QuizQuestion[];
   onComplete: (payload: QuizCompletionPayload) => void;
+  showCompletionModal?: boolean;
 }
 
 const PASSING_PERCENTAGE = 80;
@@ -105,7 +105,23 @@ const HologramModel = () => {
   );
 };
 
-const QuizModule = ({ lessonId, questions, onComplete }: QuizModuleProps) => {
+const SparkleBurstEffect = () => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: [0, 1, 0.6, 0], scale: [0.85, 1.2, 1.4, 1.6] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1.1, ease: 'easeOut' }}
+      className="absolute inset-0"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(251,191,36,0.45),_rgba(251,191,36,0)_65%)]" />
+      <div className="absolute inset-0 rotate-45 bg-[radial-gradient(circle,_rgba(253,224,71,0.35),_rgba(253,224,71,0)_55%)]" />
+      <div className="absolute inset-0 -rotate-45 bg-[radial-gradient(circle,_rgba(254,240,138,0.25),_rgba(254,240,138,0)_50%)]" />
+    </motion.div>
+  );
+};
+
+const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = true }: QuizModuleProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
@@ -234,30 +250,14 @@ const QuizModule = ({ lessonId, questions, onComplete }: QuizModuleProps) => {
         </div>
 
         <div className="relative min-h-[260px] rounded-3xl border border-slate-800/60 bg-slate-950/60 p-6">
-          <div className="absolute -top-2 right-4 h-32 w-32 overflow-hidden rounded-3xl border border-cyan-400/20 bg-cyan-500/5">
-            <HologramISS />
-            <AnimatePresence>
-              {sparkleBurst !== null && (
-                <motion.div
-                  key={sparkleBurst}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0"
-                >
-                  <Canvas camera={{ position: [0, 0, 1.4], fov: 45 }} gl={{ alpha: true }}>
-                    <Sparkles
-                      count={24}
-                      speed={0.7}
-                      size={6}
-                      scale={[2, 2, 2]}
-                      color="#fbbf24"
-                    />
-                  </Canvas>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+      <div className="absolute -top-2 right-4 h-32 w-32 overflow-hidden rounded-3xl border border-cyan-400/20 bg-cyan-500/5">
+        <HologramISS />
+        <AnimatePresence>
+          {sparkleBurst !== null && (
+            <SparkleBurstEffect key={sparkleBurst} />
+          )}
+        </AnimatePresence>
+      </div>
 
           <div className="pr-36">
             <AnimatePresence mode="wait">
@@ -363,7 +363,7 @@ const QuizModule = ({ lessonId, questions, onComplete }: QuizModuleProps) => {
       </div>
 
       <AnimatePresence>
-        {showResults && (
+        {showCompletionModal && showResults && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
