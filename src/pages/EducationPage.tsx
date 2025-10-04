@@ -7,7 +7,7 @@ import LessonModal from '../components/education/LessonModal';
 import type { QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
 import {
-  CHALLENGE_RANK_STORAGE_KEY,
+  CHALLENGE_HISTORY_STORAGE_KEY,
   LESSON_PROGRESS_STORAGE_KEY,
   type ChallengeRankRecord,
 } from '../utils/storageKeys.ts';
@@ -19,6 +19,8 @@ interface LessonProgressEntry {
   completed: boolean;
   lastScore?: number;
 }
+
+const LEGACY_CHALLENGE_KEY = 'cupola-challenge-rank';
 
 const EducationPage = () => {
   const navigate = useNavigate();
@@ -40,22 +42,61 @@ const EducationPage = () => {
   });
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [navigationDirection, setNavigationDirection] = useState(0);
-  const [challengeRank, setChallengeRank] = useState<ChallengeRankRecord | null>(() => {
+  const [challengeHistory, setChallengeHistory] = useState<ChallengeRankRecord[]>(() => {
     if (typeof window === 'undefined') {
-      return null;
+      return [];
     }
-    const stored = window.localStorage.getItem(CHALLENGE_RANK_STORAGE_KEY);
-    if (!stored) {
-      return null;
+
+    const stored = window.localStorage.getItem(CHALLENGE_HISTORY_STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as ChallengeRankRecord[];
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        console.warn('Failed to parse challenge history from storage', error);
+      }
     }
-    try {
-      const parsed = JSON.parse(stored) as ChallengeRankRecord;
-      return parsed ?? null;
-    } catch (error) {
-      console.warn('Failed to parse challenge rank from storage', error);
-      return null;
+
+    const legacyRecord = window.localStorage.getItem(LEGACY_CHALLENGE_KEY);
+    if (legacyRecord) {
+      try {
+        const parsedLegacy = JSON.parse(legacyRecord) as {
+          rank?: string;
+          percentage?: number;
+          completedAt?: string;
+        } | null;
+
+        if (parsedLegacy && typeof parsedLegacy === 'object') {
+          const migratedRecord: ChallengeRankRecord = {
+            timestamp: parsedLegacy.completedAt ?? new Date().toISOString(),
+            score: 0,
+            rank: parsedLegacy.rank ?? 'Bronze',
+            accuracy: parsedLegacy.percentage ?? 0,
+            timeTaken: 0,
+          };
+
+          const migratedHistory = [migratedRecord];
+          window.localStorage.setItem(
+            CHALLENGE_HISTORY_STORAGE_KEY,
+            JSON.stringify(migratedHistory),
+          );
+          window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
+          return migratedHistory;
+        }
+      } catch (error) {
+        console.warn('Failed to parse legacy challenge rank from storage', error);
+      }
     }
+
+    return [];
   });
+
+  const latestChallengeRecord = useMemo(
+    () => (challengeHistory.length > 0 ? challengeHistory[challengeHistory.length - 1] : null),
+    [challengeHistory],
+  );
 
   const selectedLesson: Lesson | null = useMemo(() => {
     if (selectedLessonIndex === null) {
@@ -187,12 +228,12 @@ const EducationPage = () => {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === CHALLENGE_RANK_STORAGE_KEY && event.newValue) {
+      if (event.key === CHALLENGE_HISTORY_STORAGE_KEY) {
         try {
-          const parsed = JSON.parse(event.newValue) as ChallengeRankRecord;
-          setChallengeRank(parsed);
+          const parsed = event.newValue ? JSON.parse(event.newValue) : [];
+          setChallengeHistory(Array.isArray(parsed) ? (parsed as ChallengeRankRecord[]) : []);
         } catch (error) {
-          console.warn('Failed to parse updated challenge rank from storage', error);
+          console.warn('Failed to parse updated challenge history from storage', error);
         }
       }
     };
@@ -412,9 +453,9 @@ const EducationPage = () => {
                   <p className="mt-2 text-sm text-slate-200">Earn Bronze, Silver, or Gold ranks and log your top accuracy.</p>
                 </li>
               </ul>
-              {challengeRank && (
+              {latestChallengeRecord && (
                 <p className="text-xs uppercase tracking-[0.35em] text-indigo-200/80">
-                  Last Rank: {challengeRank.rank} — {Math.round(challengeRank.percentage)}% accuracy
+                  Last Rank: {latestChallengeRecord.rank} — {Math.round(latestChallengeRecord.accuracy)}% accuracy
                 </p>
               )}
             </div>

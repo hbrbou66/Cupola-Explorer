@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
 import { quizzes, type QuizQuestion } from '../data/quizzes.ts';
 import {
-  CHALLENGE_RANK_STORAGE_KEY,
+  CHALLENGE_HISTORY_STORAGE_KEY,
   type ChallengeRankRecord,
 } from '../utils/storageKeys.ts';
 
@@ -13,6 +13,8 @@ const CHALLENGE_LENGTH = 10;
 type ChallengePhase = 'intro' | 'quiz';
 
 type ChallengeRank = ChallengeRankRecord['rank'];
+
+const LEGACY_CHALLENGE_KEY = 'cupola-challenge-rank';
 
 interface ChallengeResult extends QuizCompletionPayload {
   rank: ChallengeRank;
@@ -47,22 +49,59 @@ const ChallengePage = () => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [result, setResult] = useState<ChallengeResult | null>(null);
-  const [storedRank, setStoredRank] = useState<ChallengeRankRecord | null>(() => {
+  const [history, setHistory] = useState<ChallengeRankRecord[]>(() => {
     if (typeof window === 'undefined') {
-      return null;
+      return [];
     }
-    const cached = window.localStorage.getItem(CHALLENGE_RANK_STORAGE_KEY);
-    if (!cached) {
-      return null;
+
+    const cachedHistory = window.localStorage.getItem(CHALLENGE_HISTORY_STORAGE_KEY);
+    if (cachedHistory) {
+      try {
+        const parsed = JSON.parse(cachedHistory) as ChallengeRankRecord[];
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        console.warn('Failed to parse stored challenge history', error);
+      }
     }
-    try {
-      const parsed = JSON.parse(cached) as ChallengeRankRecord;
-      return parsed ?? null;
-    } catch (error) {
-      console.warn('Failed to parse stored challenge rank', error);
-      return null;
+
+    const legacyRecord = window.localStorage.getItem(LEGACY_CHALLENGE_KEY);
+    if (legacyRecord) {
+      try {
+        const parsedLegacy = JSON.parse(legacyRecord) as {
+          rank?: string;
+          percentage?: number;
+          completedAt?: string;
+        } | null;
+
+        if (parsedLegacy && typeof parsedLegacy === 'object') {
+          const migratedRecord: ChallengeRankRecord = {
+            timestamp: parsedLegacy.completedAt ?? new Date().toISOString(),
+            score: 0,
+            rank: parsedLegacy.rank ?? 'Bronze',
+            accuracy: parsedLegacy.percentage ?? 0,
+            timeTaken: 0,
+          };
+
+          const migratedHistory = [migratedRecord];
+          window.localStorage.setItem(
+            CHALLENGE_HISTORY_STORAGE_KEY,
+            JSON.stringify(migratedHistory),
+          );
+          window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
+          return migratedHistory;
+        }
+      } catch (error) {
+        console.warn('Failed to parse legacy challenge rank record', error);
+      }
     }
+
+    return [];
   });
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+
+  const latestRecord = history.length > 0 ? history[history.length - 1] : null;
 
   const cinematicGlow = useMemo(
     () => ({
@@ -77,6 +116,7 @@ const ChallengePage = () => {
       setPhase('intro');
       setQuestions([]);
       setShowSuccess(false);
+      setSessionStartTime(null);
       return;
     }
     navigate('/education');
@@ -89,21 +129,42 @@ const ChallengePage = () => {
     setPhase('quiz');
     setShowSuccess(false);
     setResult(null);
+    setSessionStartTime(Date.now());
   };
 
   const handleChallengeComplete = (payload: QuizCompletionPayload) => {
     const rank = computeRank(payload.percentage);
+    const timeTaken = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : 0;
     const record: ChallengeRankRecord = {
+      timestamp: new Date().toISOString(),
+      score: payload.score,
       rank,
-      percentage: payload.percentage,
-      completedAt: new Date().toISOString(),
+      accuracy: payload.percentage,
+      timeTaken,
     };
+    let updatedHistory: ChallengeRankRecord[] = [];
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CHALLENGE_RANK_STORAGE_KEY, JSON.stringify(record));
+      const historyKey = CHALLENGE_HISTORY_STORAGE_KEY;
+      let parsedExisting: ChallengeRankRecord[] = [];
+      try {
+        const existingRaw = window.localStorage.getItem(historyKey);
+        if (existingRaw) {
+          const existing = JSON.parse(existingRaw);
+          parsedExisting = Array.isArray(existing) ? (existing as ChallengeRankRecord[]) : [];
+        }
+      } catch (error) {
+        console.warn('Failed to parse existing challenge history', error);
+      }
+      updatedHistory = [...parsedExisting, record];
+      window.localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
+      window.localStorage.removeItem(LEGACY_CHALLENGE_KEY);
+    } else {
+      updatedHistory = [...history, record];
     }
-    setStoredRank(record);
+    setHistory(updatedHistory);
     setResult({ ...payload, rank });
     setShowSuccess(true);
+    setSessionStartTime(null);
   };
 
   const handleReturnToEducation = () => {
@@ -162,9 +223,9 @@ const ChallengePage = () => {
                     Strap in for a rapid-fire orbital simulation. This ten-question gauntlet pulls the sharpest intel from every
                     training module. Maintain focus, lock in your answers, and earn an elite mission rank.
                   </p>
-                  {storedRank && (
+                  {latestRecord && (
                     <p className="text-xs uppercase tracking-[0.35em] text-indigo-200/80">
-                      Last Rank: {storedRank.rank} — {Math.round(storedRank.percentage)}% accuracy
+                      Last Rank: {latestRecord.rank} — {Math.round(latestRecord.accuracy)}% accuracy
                     </p>
                   )}
                 </div>
