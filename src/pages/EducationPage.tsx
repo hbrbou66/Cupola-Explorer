@@ -7,6 +7,7 @@ import LessonModal from '../components/education/LessonModal';
 import type { QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
 import { useEducationProgress } from '../hooks/useEducationProgress.ts';
+import { updateEducationProgress } from '../utils/educationProgress.ts';
 
 const useAnimatedNumber = (value: number) => {
   const spring = useSpring(value, { stiffness: 160, damping: 26, mass: 0.6 });
@@ -168,8 +169,34 @@ const EducationPage = () => {
     markLessonViewed(lesson.id);
   };
 
-  const handleQuizComplete = ({ lessonId, percentage, passed }: QuizCompletionPayload) => {
+  const handleQuizComplete = ({ lessonId, percentage, passed, score, total }: QuizCompletionPayload) => {
     recordQuizAttempt({ lessonId, percentage, passed });
+    const now = new Date().toISOString();
+    const lesson = lessonData.find((entry) => entry.id === lessonId);
+    const lessonKey = `lesson-${lessonId.toString().padStart(2, '0')}`;
+    const lessonTitle = lesson?.title ?? `Lesson ${lessonId.toString().padStart(2, '0')}`;
+    const quizTitle = lesson ? `${lesson.title} Knowledge Quiz` : `Lesson ${lessonId.toString().padStart(2, '0')} Quiz`;
+
+    updateEducationProgress({
+      lessons: [
+        {
+          id: lessonKey,
+          title: lessonTitle,
+          completed: passed,
+          completedAt: passed ? now : undefined,
+        },
+      ],
+      quizzes: [
+        {
+          id: `quiz-${lessonKey}`,
+          title: quizTitle,
+          score,
+          maxScore: total,
+          completedAt: now,
+        },
+      ],
+      achievements: passed ? [`${lessonKey}-complete`] : undefined,
+    });
   };
 
   const { totalLessons, completedCount, totalAttempts, bestMissionScore } = derived;
