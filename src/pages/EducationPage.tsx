@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { Lesson } from '../data/lessons.ts';
 import { lessonData } from '../data/lessons.ts';
-import LessonVisual from '../components/education/LessonVisual';
-import QuizModule, { type QuizCompletionPayload } from '../components/education/QuizModule';
+import LessonModal from '../components/education/LessonModal';
+import type { QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
 import {
   CHALLENGE_RANK_STORAGE_KEY,
@@ -222,43 +222,6 @@ const EducationPage = () => {
   const challengeSubtitle = isChallengeUnlocked
     ? 'Ready for the ISS Knowledge Challenge'
     : 'Complete 3 lessons to unlock the challenge';
-
-  const modalBackdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 },
-    exit: { opacity: 0 },
-  };
-
-  const modalVariants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.95,
-      transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
-    },
-  };
-
-  const contentVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 60 : direction < 0 ? -60 : 0,
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -60 : direction < 0 ? 60 : 0,
-      opacity: 0,
-      transition: { duration: 0.25, ease: [0.4, 0, 1, 1] },
-    }),
-  } as const;
 
   return (
     <div className="education-page flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-sky-100">
@@ -487,130 +450,17 @@ const EducationPage = () => {
         </section>
       </main>
 
-      <AnimatePresence>
-        {selectedLesson && (
-          <motion.div
-            className="fixed inset-0 z-30 flex items-center justify-center p-4"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={modalBackdropVariants}
-          >
-            <motion.div
-              role="presentation"
-              onClick={handleLessonClose}
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full cursor-pointer bg-slate-950/80 backdrop-blur-sm"
-            />
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="selected-lesson-title"
-              variants={modalVariants}
-              onClick={(event) => event.stopPropagation()}
-              className="mx-auto w-[min(1100px,95vw)] h-[85vh] sm:h-[85vh] xs:h-[92vh] rounded-3xl border border-sky-800/60 bg-slate-950/80 shadow-2xl backdrop-blur-xl pointer-events-auto flex flex-col overflow-hidden"
-            >
-              <div className="shrink-0 sticky top-0 z-10 bg-slate-950/90 backdrop-blur border-b border-sky-800/50 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] tracking-[0.2em] text-sky-400/80 uppercase">
-                      Lesson {selectedLesson.id.toString().padStart(2, '0')}
-                    </p>
-                    <h2 id="selected-lesson-title" className="text-xl sm:text-2xl font-semibold text-sky-100">
-                      {selectedLesson.title}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleLessonClose}
-                    className="rounded-full border border-sky-700/60 px-3 py-2 hover:bg-sky-900/40"
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <AnimatePresence mode="wait" custom={navigationDirection}>
-                <motion.div
-                  key={`${selectedLesson.id}-content`}
-                  variants={contentVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  custom={navigationDirection}
-                  className="grow overflow-y-auto overscroll-contain scroll-smooth px-6 py-6 space-y-10 modal-scroll lesson-scrollable-content"
-                >
-                  <section className="lesson-section">
-                    <LessonVisual lesson={selectedLesson} />
-                  </section>
-
-                  <section className="lesson-section grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="prose prose-invert max-w-none leading-relaxed text-slate-200/90">
-                      {selectedLesson.details.split('\n\n').map((paragraph) => (
-                        <p key={paragraph.slice(0, 40)}>{paragraph}</p>
-                      ))}
-                    </div>
-                    <div className="rounded-2xl border border-sky-800/50 bg-slate-900/40 p-4">
-                      <h3 className="text-sky-300/90 text-sm tracking-widest uppercase mb-3">Key Facts</h3>
-                      <ul className="grid gap-3 md:grid-cols-1">
-                        {selectedLesson.facts.map((fact) => (
-                          <li key={fact} className="fact-item border border-sky-700/40 text-sky-100/90">
-                            {fact}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </section>
-
-                  <section className="lesson-section">
-                    <div className="w-full rounded-2xl border border-amber-600/40 bg-amber-900/20 p-4 text-amber-100">
-                      <div className="uppercase text-xs tracking-widest opacity-80 mb-1">Did you know?</div>
-                      <p>{selectedLesson.funFact ?? 'Even at ~400 km, thin atmosphere causes drag; reboosts keep ISS aloft.'}</p>
-                    </div>
-                  </section>
-
-                  {selectedQuiz && (
-                    <section className="lesson-section">
-                      <QuizModule
-                        key={selectedLesson.id}
-                        lessonId={selectedLesson.id}
-                        questions={selectedQuiz.questions}
-                        onComplete={handleQuizComplete}
-                      />
-                    </section>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="shrink-0 sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur border-t border-sky-800/50 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] tracking-widest text-sky-300/80">
-                    Lesson {(selectedLessonIndex ?? 0) + 1} of {totalLessons}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleLessonNavigate('previous')}
-                      className="rounded-lg border border-sky-700/60 px-3 py-2 hover:bg-sky-900/40"
-                    >
-                      ← Previous
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleLessonNavigate('next')}
-                      className="rounded-lg border border-sky-700/60 px-3 py-2 hover:bg-sky-900/40"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-      </AnimatePresence>
+      <LessonModal
+        isOpen={Boolean(selectedLesson)}
+        lesson={selectedLesson}
+        lessonIndex={selectedLessonIndex ?? 0}
+        totalLessons={totalLessons}
+        navigationDirection={navigationDirection}
+        quiz={selectedQuiz}
+        onClose={handleLessonClose}
+        onNavigate={handleLessonNavigate}
+        onQuizComplete={handleQuizComplete}
+      />
     </div>
   );
 };
