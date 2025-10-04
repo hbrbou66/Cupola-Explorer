@@ -1,9 +1,6 @@
-import { Suspense, useEffect, useMemo } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import * as THREE from 'three';
+import { Suspense, useMemo } from 'react';
 import type { Lesson } from '../../data/lessons';
+import LessonSceneController from '../LessonSceneController';
 import LessonModel from './LessonModel';
 
 interface LessonVisualProps {
@@ -15,14 +12,14 @@ type Vector3Tuple = [number, number, number];
 interface CameraConfig {
   position: Vector3Tuple;
   target: Vector3Tuple;
-  parallax: { x: number; y: number };
+  fov: number;
+  autoRotateSpeed: number;
 }
 
 interface ModelConfig {
   scale: number;
   position: Vector3Tuple;
   rotation: Vector3Tuple;
-  rotationSpeed: number;
 }
 
 interface BloomConfig {
@@ -47,6 +44,7 @@ interface DirectionalLightConfig {
 
 interface LightConfig {
   ambient: number;
+  ambientColor?: string;
   directional: DirectionalLightConfig[];
 }
 
@@ -57,6 +55,7 @@ interface SceneConfig {
   lights: LightConfig;
   contactShadow: ContactShadowConfig;
   environment: 'apartment' | 'city' | 'dawn' | 'forest' | 'lobby' | 'night' | 'park' | 'studio' | 'sunset' | 'warehouse';
+  background: string;
 }
 
 interface PartialSceneConfig {
@@ -66,30 +65,32 @@ interface PartialSceneConfig {
   lights?: Partial<LightConfig>;
   contactShadow?: Partial<ContactShadowConfig>;
   environment?: SceneConfig['environment'];
+  background?: string;
 }
 
 const baseSceneConfig: SceneConfig = {
   camera: {
     position: [0.15, 0.3, 4.2],
     target: [0, 0, 0],
-    parallax: { x: 0.32, y: 0.22 },
+    fov: 48,
+    autoRotateSpeed: 0.4,
   },
   model: {
     scale: 1,
     position: [0, -0.3, 0],
     rotation: [0, Math.PI / 6, 0],
-    rotationSpeed: 0.002,
   },
   bloom: {
-    intensity: 0.55,
+    intensity: 0.6,
     threshold: 0.22,
     smoothing: 0.75,
   },
   lights: {
     ambient: 0.65,
+    ambientColor: '#9ec5ff',
     directional: [
       { position: [4, 6, 8], intensity: 1.6, color: '#9ec5ff' },
-      { position: [-5, -2, -4], intensity: 0.8, color: '#1e2a4a' },
+      { position: [-5, -2, -4], intensity: 0.9, color: '#1e2a4a' },
     ],
   },
   contactShadow: {
@@ -100,203 +101,285 @@ const baseSceneConfig: SceneConfig = {
     position: [0, -1.2, 0],
   },
   environment: 'city',
+  background: '#040b1a',
 };
 
 const sceneOverrides: Record<Lesson['visual'], PartialSceneConfig> = {
   orbit: {
     camera: {
-      position: [0.25, 0.4, 4.6],
-      parallax: { x: 0.34, y: 0.24 },
-    },
-    model: {
-      scale: 1.1,
-      rotationSpeed: 0.0024,
-    },
-    bloom: {
-      intensity: 0.62,
-      threshold: 0.2,
-    },
-  },
-  dayNight: {
-    environment: 'sunset',
-    lights: {
-      ambient: 0.55,
-      directional: [
-        { position: [5, 4, 6], intensity: 1.4, color: '#ffd29d' },
-        { position: [-4, -3, -4], intensity: 0.7, color: '#18314f' },
-      ],
-    },
-    model: {
-      scale: 1.05,
-      rotation: [0.1, Math.PI / 4, 0],
-    },
-    bloom: {
-      intensity: 0.48,
-      threshold: 0.26,
-    },
-  },
-  cupola: {
-    environment: 'night',
-    camera: {
-      position: [-0.2, 0.25, 4],
-      parallax: { x: 0.28, y: 0.2 },
-    },
-    lights: {
-      ambient: 0.5,
-      directional: [
-        { position: [3, 5, 6], intensity: 1.3, color: '#6ca8ff' },
-        { position: [-3, -3, -4], intensity: 0.65, color: '#1f2937' },
-      ],
-    },
-    model: {
-      scale: 1.15,
-      position: [0, -0.4, 0],
-      rotationSpeed: 0.0021,
-    },
-  },
-  aurora: {
-    environment: 'night',
-    lights: {
-      ambient: 0.45,
-      directional: [
-        { position: [3, 5, 5], intensity: 1.5, color: '#8ff0c0' },
-        { position: [-4, -2, -4], intensity: 0.75, color: '#14203b' },
-      ],
-    },
-    bloom: {
-      intensity: 0.78,
-      threshold: 0.18,
-    },
-    model: {
-      scale: 1.22,
-      rotationSpeed: 0.0018,
-    },
-  },
-  life: {
-    environment: 'studio',
-    lights: {
-      ambient: 0.7,
-      directional: [
-        { position: [5, 4, 6], intensity: 1.4, color: '#f9d6ff' },
-        { position: [-4, -3, -5], intensity: 0.85, color: '#1f2a44' },
-      ],
-    },
-    model: {
-      scale: 1.1,
-      position: [0, -0.2, 0],
-      rotation: [0, Math.PI / 8, 0],
-      rotationSpeed: 0.0025,
-    },
-  },
-  orbitPhysics: {
-    camera: {
-      position: [0.3, 0.35, 4.4],
-    },
-    model: {
-      scale: 1.12,
-      rotationSpeed: 0.0028,
-    },
-    lights: {
-      ambient: 0.6,
-      directional: [
-        { position: [4.5, 5, 7], intensity: 1.6, color: '#8bd0ff' },
-        { position: [-5, -3, -4.5], intensity: 0.9, color: '#162035' },
-      ],
-    },
-  },
-  international: {
-    environment: 'apartment',
-    lights: {
-      ambient: 0.75,
-      directional: [
-        { position: [4, 6, 8], intensity: 1.45, color: '#ffe58f' },
-        { position: [-6, -3, -4], intensity: 0.82, color: '#273149' },
-      ],
-    },
-    model: {
-      scale: 1.05,
-      rotationSpeed: 0.0022,
-    },
-  },
-  microgravity: {
-    environment: 'studio',
-    bloom: {
-      intensity: 0.68,
-      threshold: 0.2,
-    },
-    model: {
-      scale: 1.18,
-      rotation: [0.15, Math.PI / 3, 0.05],
-    },
-  },
-  earthObservation: {
-    environment: 'sunset',
-    lights: {
-      ambient: 0.6,
-      directional: [
-        { position: [5, 5, 7], intensity: 1.5, color: '#ffe1a8' },
-        { position: [-5, -2, -5], intensity: 0.8, color: '#1a2538' },
-      ],
-    },
-    model: {
-      scale: 1.16,
-      rotation: [0.05, Math.PI / 5, 0],
-      rotationSpeed: 0.0023,
-    },
-  },
-  communications: {
-    environment: 'studio',
-    lights: {
-      ambient: 0.65,
-      directional: [
-        { position: [4, 6, 7], intensity: 1.55, color: '#8bbcff' },
-        { position: [-4, -2, -4], intensity: 0.85, color: '#1a2a45' },
-      ],
-    },
-    bloom: {
-      intensity: 0.7,
-      threshold: 0.21,
+      position: [0.2, 0.42, 4.4],
+      autoRotateSpeed: 0.55,
     },
     model: {
       scale: 1.08,
-      rotationSpeed: 0.0026,
+      rotation: [0, Math.PI / 5, 0],
     },
+    bloom: {
+      intensity: 0.68,
+      threshold: 0.19,
+    },
+    lights: {
+      ambient: 0.72,
+      ambientColor: '#8dd2ff',
+      directional: [
+        { position: [5, 6, 7], intensity: 1.85, color: '#b9ddff' },
+        { position: [-4, -3, -5], intensity: 0.85, color: '#101c2e' },
+      ],
+    },
+    environment: 'night',
+    background: '#041a35',
   },
-  docking: {
-    environment: 'warehouse',
+  dayNight: {
+    camera: {
+      position: [0.12, 0.38, 4.5],
+      autoRotateSpeed: 0.5,
+    },
+    model: {
+      scale: 1.04,
+      rotation: [0, Math.PI / 4, 0],
+    },
+    bloom: {
+      intensity: 0.64,
+    },
     lights: {
       ambient: 0.6,
+      ambientColor: '#7dd3fc',
       directional: [
-        { position: [6, 4, 7], intensity: 1.65, color: '#9ecaff' },
-        { position: [-4, -3, -4], intensity: 0.95, color: '#141d2e' },
+        { position: [3, 5, 7], intensity: 1.7, color: '#ffe29f' },
+        { position: [-6, -1.4, -5], intensity: 0.75, color: '#0f172a' },
       ],
+    },
+    environment: 'sunset',
+    background: '#0a1636',
+  },
+  cupola: {
+    camera: {
+      position: [0.18, 0.34, 4.1],
+      autoRotateSpeed: 0.46,
     },
     model: {
       scale: 1.12,
-      rotation: [0.08, Math.PI / 3.2, 0],
-    },
-  },
-  future: {
-    environment: 'dawn',
-    lights: {
-      ambient: 0.7,
-      directional: [
-        { position: [5, 5, 6], intensity: 1.6, color: '#ffd1ff' },
-        { position: [-4, -3, -4], intensity: 0.9, color: '#18243a' },
-      ],
+      rotation: [0, Math.PI / 3, 0],
     },
     bloom: {
-      intensity: 0.75,
-      threshold: 0.19,
+      intensity: 0.7,
+      smoothing: 0.82,
+    },
+    lights: {
+      ambient: 0.58,
+      ambientColor: '#8ea5ff',
+      directional: [
+        { position: [4, 5.5, 6], intensity: 1.55, color: '#b1c8ff' },
+        { position: [-3, -2.5, -4], intensity: 0.8, color: '#101420' },
+      ],
+    },
+    environment: 'studio',
+    background: '#050f24',
+  },
+  aurora: {
+    camera: {
+      position: [0.25, 0.36, 4.5],
+      autoRotateSpeed: 0.58,
+    },
+    model: {
+      scale: 1.1,
+      rotation: [0, Math.PI / 4.2, 0],
+    },
+    bloom: {
+      intensity: 0.78,
+      threshold: 0.16,
+    },
+    lights: {
+      ambient: 0.75,
+      ambientColor: '#4ee1a0',
+      directional: [
+        { position: [3, 7, 6], intensity: 1.6, color: '#6fffc7' },
+        { position: [-5, -2, -5], intensity: 0.9, color: '#172a29' },
+      ],
+    },
+    environment: 'forest',
+    background: '#03241f',
+  },
+  life: {
+    camera: {
+      position: [0.1, 0.32, 4.3],
+      autoRotateSpeed: 0.42,
+    },
+    model: {
+      scale: 1.05,
+      rotation: [0, Math.PI / 5.5, 0],
+    },
+    lights: {
+      ambient: 0.62,
+      ambientColor: '#ffd3a4',
+      directional: [
+        { position: [4, 4.5, 5.5], intensity: 1.5, color: '#ffe4b5' },
+        { position: [-4.2, -2, -4.8], intensity: 0.78, color: '#2b1c10' },
+      ],
+    },
+    environment: 'apartment',
+    background: '#1b0f0b',
+  },
+  orbitPhysics: {
+    camera: {
+      position: [0.22, 0.46, 4.6],
+      autoRotateSpeed: 0.6,
+    },
+    model: {
+      scale: 1.16,
+      rotation: [0, Math.PI / 3.5, 0],
+    },
+    bloom: {
+      intensity: 0.72,
+    },
+    lights: {
+      ambient: 0.68,
+      ambientColor: '#6ac7ff',
+      directional: [
+        { position: [5.5, 6.5, 7], intensity: 1.9, color: '#7fbfff' },
+        { position: [-4.5, -3.5, -5], intensity: 0.82, color: '#101529' },
+      ],
+    },
+    environment: 'night',
+    background: '#021227',
+  },
+  international: {
+    camera: {
+      position: [0.15, 0.3, 4.2],
+      autoRotateSpeed: 0.44,
+    },
+    model: {
+      scale: 1.02,
+      rotation: [0, Math.PI / 4, 0],
+    },
+    lights: {
+      ambient: 0.66,
+      ambientColor: '#9ec5ff',
+      directional: [
+        { position: [4.5, 5.8, 6.5], intensity: 1.7, color: '#b9d8ff' },
+        { position: [-5, -2.2, -4.6], intensity: 0.8, color: '#121c2e' },
+      ],
+    },
+    environment: 'studio',
+    background: '#061630',
+  },
+  microgravity: {
+    camera: {
+      position: [0.08, 0.28, 4.1],
+      autoRotateSpeed: 0.48,
+    },
+    model: {
+      scale: 1.08,
+      rotation: [0, Math.PI / 5, 0],
+    },
+    bloom: {
+      intensity: 0.74,
+      smoothing: 0.8,
+    },
+    lights: {
+      ambient: 0.7,
+      ambientColor: '#c0a8ff',
+      directional: [
+        { position: [3.8, 6.4, 6.2], intensity: 1.65, color: '#e3ccff' },
+        { position: [-3.5, -2.8, -4.2], intensity: 0.78, color: '#251236' },
+      ],
+    },
+    environment: 'lobby',
+    background: '#1a0f2b',
+  },
+  earthObservation: {
+    camera: {
+      position: [0.18, 0.35, 4.3],
+      autoRotateSpeed: 0.52,
+    },
+    model: {
+      scale: 1.1,
+      rotation: [0, Math.PI / 4.3, 0],
+    },
+    lights: {
+      ambient: 0.68,
+      ambientColor: '#5fd8ff',
+      directional: [
+        { position: [4.6, 5.8, 6.3], intensity: 1.75, color: '#87e0ff' },
+        { position: [-4.3, -2.1, -4.9], intensity: 0.82, color: '#082030' },
+      ],
+    },
+    environment: 'park',
+    background: '#031b29',
+  },
+  communications: {
+    camera: {
+      position: [0.2, 0.32, 4.2],
+      autoRotateSpeed: 0.5,
+    },
+    model: {
+      scale: 1.06,
+      rotation: [0, Math.PI / 4.8, 0],
+    },
+    bloom: {
+      intensity: 0.69,
+    },
+    lights: {
+      ambient: 0.63,
+      ambientColor: '#ffd580',
+      directional: [
+        { position: [4.8, 5.2, 6.5], intensity: 1.6, color: '#ffe5a0' },
+        { position: [-4.6, -2.4, -4.4], intensity: 0.78, color: '#2c1404' },
+      ],
+    },
+    environment: 'sunset',
+    background: '#251307',
+  },
+  docking: {
+    camera: {
+      position: [0.24, 0.38, 4.5],
+      autoRotateSpeed: 0.56,
+    },
+    model: {
+      scale: 1.12,
+      rotation: [0, Math.PI / 3.6, 0],
+    },
+    bloom: {
+      intensity: 0.71,
+      smoothing: 0.78,
+    },
+    lights: {
+      ambient: 0.7,
+      ambientColor: '#9ab0ff',
+      directional: [
+        { position: [5.4, 6.2, 6.8], intensity: 1.8, color: '#d0dcff' },
+        { position: [-4.1, -3.1, -5], intensity: 0.84, color: '#0d1326' },
+      ],
+    },
+    environment: 'warehouse',
+    background: '#0a1331',
+  },
+  future: {
+    camera: {
+      position: [0.2, 0.34, 4.4],
+      autoRotateSpeed: 0.54,
     },
     model: {
       scale: 1.14,
-      rotationSpeed: 0.0021,
+      rotation: [0, Math.PI / 3.2, 0],
     },
+    bloom: {
+      intensity: 0.76,
+    },
+    lights: {
+      ambient: 0.74,
+      ambientColor: '#ffc46b',
+      directional: [
+        { position: [5, 5.8, 6.4], intensity: 1.72, color: '#ffd27f' },
+        { position: [-4.8, -2.6, -4.6], intensity: 0.82, color: '#1f0f04' },
+      ],
+    },
+    environment: 'dawn',
+    background: '#281204',
   },
 };
 
-const mergeSceneConfig = (override: PartialSceneConfig | undefined): SceneConfig => {
+const mergeSceneConfig = (override?: PartialSceneConfig): SceneConfig => {
   if (!override) {
     return baseSceneConfig;
   }
@@ -305,13 +388,13 @@ const mergeSceneConfig = (override: PartialSceneConfig | undefined): SceneConfig
     camera: {
       position: override.camera?.position ?? baseSceneConfig.camera.position,
       target: override.camera?.target ?? baseSceneConfig.camera.target,
-      parallax: override.camera?.parallax ?? baseSceneConfig.camera.parallax,
+      fov: override.camera?.fov ?? baseSceneConfig.camera.fov,
+      autoRotateSpeed: override.camera?.autoRotateSpeed ?? baseSceneConfig.camera.autoRotateSpeed,
     },
     model: {
       scale: override.model?.scale ?? baseSceneConfig.model.scale,
       position: override.model?.position ?? baseSceneConfig.model.position,
       rotation: override.model?.rotation ?? baseSceneConfig.model.rotation,
-      rotationSpeed: override.model?.rotationSpeed ?? baseSceneConfig.model.rotationSpeed,
     },
     bloom: {
       intensity: override.bloom?.intensity ?? baseSceneConfig.bloom.intensity,
@@ -320,6 +403,7 @@ const mergeSceneConfig = (override: PartialSceneConfig | undefined): SceneConfig
     },
     lights: {
       ambient: override.lights?.ambient ?? baseSceneConfig.lights.ambient,
+      ambientColor: override.lights?.ambientColor ?? baseSceneConfig.lights.ambientColor,
       directional: override.lights?.directional ?? baseSceneConfig.lights.directional,
     },
     contactShadow: {
@@ -330,39 +414,9 @@ const mergeSceneConfig = (override: PartialSceneConfig | undefined): SceneConfig
       position: override.contactShadow?.position ?? baseSceneConfig.contactShadow.position,
     },
     environment: override.environment ?? baseSceneConfig.environment,
+    background: override.background ?? baseSceneConfig.background,
   };
 };
-
-const ParallaxCameraRig = ({ config }: { config: SceneConfig['camera'] }) => {
-  const { camera } = useThree();
-  const target = useMemo(() => new THREE.Vector3(...config.target), [config.target]);
-  const basePosition = useMemo(() => new THREE.Vector3(...config.position), [config.position]);
-
-  useEffect(() => {
-    camera.position.set(basePosition.x, basePosition.y, basePosition.z);
-    camera.lookAt(target);
-  }, [basePosition, camera, target]);
-
-  useFrame(({ mouse }) => {
-    const nextX = basePosition.x + mouse.x * config.parallax.x;
-    const nextY = basePosition.y + mouse.y * config.parallax.y;
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, nextX, 0.06);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, nextY, 0.06);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, basePosition.z, 0.06);
-    camera.lookAt(target);
-  });
-
-  return null;
-};
-
-const CinematicLights = ({ lights }: { lights: LightConfig }) => (
-  <>
-    <ambientLight intensity={lights.ambient} />
-    {lights.directional.map((light, index) => (
-      <directionalLight key={`dir-${index}`} position={light.position} intensity={light.intensity} color={light.color} />
-    ))}
-  </>
-);
 
 const CanvasFallback = () => (
   <div className="flex h-full w-full items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-[10px] uppercase tracking-[0.4em] text-slate-500/70">
@@ -374,41 +428,22 @@ const LessonVisual = ({ lesson }: LessonVisualProps) => {
   const config = useMemo(() => mergeSceneConfig(sceneOverrides[lesson.visual]), [lesson.visual]);
 
   return (
-    <div className="relative h-[26rem] w-full overflow-hidden rounded-[1.75rem] border border-slate-800/60 bg-slate-950/80 shadow-[0_35px_120px_-60px_rgba(56,189,248,0.9)]">
+    <div
+      className="relative h-[26rem] w-full overflow-hidden rounded-[1.75rem] border border-slate-800/60 bg-slate-950/70 shadow-[0_35px_140px_-70px_rgba(56,189,248,0.95)]"
+      style={{ backgroundImage: `radial-gradient(140% 120% at 50% 0%, ${config.background}66, rgba(2,6,23,0.92))` }}
+    >
       <Suspense fallback={<CanvasFallback />}>
-        <Canvas
-          camera={{ position: config.camera.position, fov: 50 }}
-          dpr={[1, 1.8]}
-          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
-        >
-          <color attach="background" args={["#020617"]} />
-          <CinematicLights lights={config.lights} />
-          <Suspense fallback={null}>
-            <LessonModel
-              modelPath={lesson.model}
-              baseScale={config.model.scale}
-              position={config.model.position}
-              rotation={config.model.rotation}
-              rotationSpeed={config.model.rotationSpeed}
-            />
-            <Environment preset={config.environment} />
-          </Suspense>
-          <ContactShadows
-            opacity={config.contactShadow.opacity}
-            scale={config.contactShadow.scale}
-            blur={config.contactShadow.blur}
-            far={config.contactShadow.far}
-            position={config.contactShadow.position}
+        <LessonSceneController lessonId={lesson.id} config={config}>
+          <LessonModel
+            modelPath={lesson.model}
+            baseScale={config.model.scale}
+            position={config.model.position}
+            rotation={config.model.rotation}
           />
-          <EffectComposer disableNormalPass>
-            <Bloom intensity={config.bloom.intensity} luminanceThreshold={config.bloom.threshold} luminanceSmoothing={config.bloom.smoothing} />
-          </EffectComposer>
-          <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
-          <ParallaxCameraRig config={config.camera} />
-        </Canvas>
+        </LessonSceneController>
       </Suspense>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/10 to-slate-950/60" />
-      <div className="pointer-events-none absolute inset-x-6 bottom-4 flex justify-end text-[10px] uppercase tracking-[0.45em] text-slate-400/70">
+      <div className="pointer-events-none absolute inset-x-6 bottom-4 flex justify-end text-[10px] uppercase tracking-[0.45em] text-slate-200/80">
         {lesson.title}
       </div>
     </div>
