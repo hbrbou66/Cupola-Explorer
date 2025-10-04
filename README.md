@@ -43,3 +43,7 @@ Visit [http://localhost:5173](http://localhost:5173) once the dev server is runn
 
 - TLE updates are logged in the telemetry panel. In development builds, the console reports any fetch issues and keeps the previous orbital solution active until new data arrives.
 - The Three.js scene logs warnings if shaders or textures fail to load.
+
+## Manual Checks
+
+- **Lesson visual fallback** – With the dev server running, temporarily rename or remove a lesson GLB under `public/models/lessons`. Open the Education modal for the affected lesson and confirm the "Lesson visual unavailable" message appears while the rest of the modal remains usable. Restore the asset afterwards.
