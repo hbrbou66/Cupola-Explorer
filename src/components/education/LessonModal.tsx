@@ -115,6 +115,7 @@ const LessonModal = ({
             <QuizModule
               key={lesson.id}
               lessonId={lesson.id}
+              lessonTitle={lesson.title}
               questions={quiz.questions}
               onComplete={onQuizComplete}
             />

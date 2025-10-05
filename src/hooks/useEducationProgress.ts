@@ -5,10 +5,12 @@ import {
   LESSON_PROGRESS_STORAGE_KEY,
   type ChallengeRankRecord,
 } from '../utils/storageKeys.ts';
-import type {
-  EducationProgress as TrackerProgress,
-  LessonProgress as TrackerLessonProgress,
-  QuizProgress as TrackerQuizProgress,
+import {
+  type EducationProgress as TrackerProgress,
+  type LessonProgress as TrackerLessonProgress,
+  type QuizProgress as TrackerQuizProgress,
+  mergeUnique as mergeTrackerUnique,
+  updateEducationProgress as persistTrackerProgress,
 } from '../utils/educationProgress.ts';
 
 export interface LessonProgressEntry {
@@ -49,6 +51,15 @@ const DEFAULT_PROGRESS: EducationProgress = {
 };
 
 const toLessonKey = (lessonId: number) => `lesson-${lessonId.toString().padStart(2, '0')}`;
+
+const extractLessonIdFromQuizId = (quizId: string): number | null => {
+  const match = quizId.match(/quiz-lesson-(\d+)/);
+  if (!match) {
+    return null;
+  }
+  const lessonId = Number.parseInt(match[1] ?? '', 10);
+  return Number.isNaN(lessonId) ? null : lessonId;
+};
 
 const computeAchievements = (
   lessonStats: Record<number, LessonProgressEntry>,
@@ -238,7 +249,51 @@ const deriveProgress = (base: EducationProgress): EducationProgress => {
   const quizzes = Array.isArray(base.quizzes) ? base.quizzes : [];
   const totalXP = Number.isFinite(base.totalXP) ? Number(base.totalXP) : 0;
 
-  Object.entries(lessonStats).forEach(([lessonKey, entry]) => {
+  const lessonsMap = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const normalizedLessonStats: Record<number, LessonProgressEntry> = { ...lessonStats };
+
+  lessons.forEach((lesson) => {
+    if (!lesson || typeof lesson.id !== 'string') {
+      return;
+    }
+    if (lesson.completed) {
+      completedLessons.add(lesson.id);
+    }
+    const numericId = extractLessonIdFromQuizId(`quiz-${lesson.id}`);
+    if (numericId === null) {
+      return;
+    }
+    const existing = normalizedLessonStats[numericId];
+    normalizedLessonStats[numericId] = {
+      viewed: existing?.viewed ?? true,
+      attempts: existing?.attempts ?? 0,
+      bestScore: existing?.bestScore ?? 0,
+      completed: existing?.completed ?? Boolean(lesson.completed),
+      lastScore: existing?.lastScore,
+    };
+  });
+
+  quizzes.forEach((quiz) => {
+    const lessonId = extractLessonIdFromQuizId(quiz.id);
+    if (lessonId === null) {
+      return;
+    }
+    const percentage = quiz.maxScore > 0 ? (quiz.score / quiz.maxScore) * 100 : 0;
+    const existing = normalizedLessonStats[lessonId];
+    const lessonKey = toLessonKey(lessonId);
+    const lessonRecord = lessonsMap.get(lessonKey);
+
+    normalizedLessonStats[lessonId] = {
+      viewed: existing?.viewed ?? true,
+      attempts: existing?.attempts ?? (percentage > 0 ? 1 : 0),
+      bestScore: existing ? Math.max(existing.bestScore ?? 0, percentage) : percentage,
+      completed:
+        existing?.completed ?? Boolean(lessonRecord?.completed) ?? percentage >= 80,
+      lastScore: existing?.lastScore ?? percentage,
+    };
+  });
+
+  Object.entries(normalizedLessonStats).forEach(([lessonKey, entry]) => {
     const lessonId = Number(lessonKey);
     const key = toLessonKey(lessonId);
     if (entry?.completed) {
@@ -249,12 +304,16 @@ const deriveProgress = (base: EducationProgress): EducationProgress => {
   });
 
   const totalScore = challengeHistory.reduce((total, record) => total + (record?.score ?? 0), 0);
-  const achievements = computeAchievements(lessonStats, challengeHistory);
+  const trackerAchievements = Array.isArray(base.achievements) ? base.achievements : [];
+  const achievements = mergeTrackerUnique(
+    computeAchievements(normalizedLessonStats, challengeHistory),
+    trackerAchievements,
+  );
 
   return {
     ...DEFAULT_PROGRESS,
     ...base,
-    lessonStats,
+    lessonStats: normalizedLessonStats,
     challengeHistory,
     completedLessons: Array.from(completedLessons),
     totalLessons: lessonData.length,
@@ -344,7 +403,21 @@ export const useEducationProgress = () => {
   );
 
   const recordQuizAttempt = useCallback(
-    ({ lessonId, percentage, passed }: { lessonId: number; percentage: number; passed: boolean }) => {
+    ({
+      lessonId,
+      percentage,
+      passed,
+      score,
+      total,
+      completedAt,
+    }: {
+      lessonId: number;
+      percentage: number;
+      passed: boolean;
+      score: number;
+      total: number;
+      completedAt: string;
+    }) => {
       updateProgress((current) => {
         const existing = current.lessonStats[lessonId] ?? {
           viewed: true,
@@ -352,15 +425,49 @@ export const useEducationProgress = () => {
           attempts: 0,
           completed: false,
         };
+
+        const now = completedAt ?? new Date().toISOString();
+        const lessonKey = toLessonKey(lessonId);
+        const lesson = lessonData.find((entry) => entry.id === lessonId);
+        const lessonTitle = lesson?.title ?? `Lesson ${lessonId.toString().padStart(2, '0')}`;
+        const quizTitle = `${lessonTitle} Knowledge Quiz`;
+
+        const trackerResult = persistTrackerProgress({
+          lessons: [
+            {
+              id: lessonKey,
+              title: lessonTitle,
+              completed: passed || existing.completed,
+              completedAt: passed ? now : undefined,
+            },
+          ],
+          quizzes: [
+            {
+              id: `quiz-${lessonKey}`,
+              title: quizTitle,
+              score,
+              maxScore: total,
+              completedAt: now,
+            },
+          ],
+        });
+
         const bestScore = Math.max(existing.bestScore ?? 0, percentage);
+        const attempts = (existing.attempts ?? 0) + 1;
+
         return {
           ...current,
+          lessons: trackerResult.lessons,
+          quizzes: trackerResult.quizzes,
+          totalXP: trackerResult.totalXP,
+          achievements: trackerResult.achievements,
+          lastUpdated: trackerResult.lastUpdated,
           lessonStats: {
             ...current.lessonStats,
             [lessonId]: {
               ...existing,
               viewed: true,
-              attempts: (existing.attempts ?? 0) + 1,
+              attempts,
               bestScore,
               completed: passed || existing.completed,
               lastScore: percentage,
