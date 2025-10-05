@@ -7,6 +7,7 @@ Cupola Explorer immerses you in the International Space Station's orbital experi
 ```bash
 npm install
 npm run dev
+npm install --legacy-peer-deps
 ```
 
 Visit [http://localhost:5173](http://localhost:5173) once the dev server is running. The visualization updates continuously while remaining responsive on desktop and mobile screens.
