@@ -162,7 +162,7 @@ const mergeLessonProgress = (current: LessonProgress[], incoming: LessonProgress
   incoming.forEach((lesson) => {
     const normalized = normalizeLesson(lesson);
     const existing = map.get(normalized.id);
-    const completed = normalized.completed ?? existing?.completed ?? false;
+    const completed = Boolean(normalized.completed || existing?.completed);
     const completedAt = completed
       ? normalizeDate(normalized.completedAt) ?? existing?.completedAt ?? new Date().toISOString()
       : existing?.completedAt;
