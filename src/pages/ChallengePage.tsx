@@ -198,9 +198,11 @@ const ChallengePage = () => {
               <QuizModule
                 key={sessionId}
                 lessonId={0}
+                lessonTitle="ISS Knowledge Challenge"
                 questions={questions}
                 onComplete={handleChallengeComplete}
                 showCompletionModal={false}
+                persistProgress={false}
               />
             </motion.section>
           )}

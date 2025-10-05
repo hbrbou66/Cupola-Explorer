@@ -7,7 +7,7 @@ import LessonModal from '../components/education/LessonModal';
 import type { QuizCompletionPayload } from '../components/education/QuizModule';
 import { getQuizByLessonId } from '../data/quizzes.ts';
 import { useEducationProgress } from '../hooks/useEducationProgress.ts';
-import { updateEducationProgress } from '../utils/educationProgress.ts';
+import { getRankForXP } from '../utils/educationProgress.ts';
 
 const useAnimatedNumber = (value: number) => {
   const spring = useSpring(value, { stiffness: 160, damping: 26, mass: 0.6 });
@@ -169,34 +169,8 @@ const EducationPage = () => {
     markLessonViewed(lesson.id);
   };
 
-  const handleQuizComplete = ({ lessonId, percentage, passed, score, total }: QuizCompletionPayload) => {
-    recordQuizAttempt({ lessonId, percentage, passed });
-    const now = new Date().toISOString();
-    const lesson = lessonData.find((entry) => entry.id === lessonId);
-    const lessonKey = `lesson-${lessonId.toString().padStart(2, '0')}`;
-    const lessonTitle = lesson?.title ?? `Lesson ${lessonId.toString().padStart(2, '0')}`;
-    const quizTitle = lesson ? `${lesson.title} Knowledge Quiz` : `Lesson ${lessonId.toString().padStart(2, '0')} Quiz`;
-
-    updateEducationProgress({
-      lessons: [
-        {
-          id: lessonKey,
-          title: lessonTitle,
-          completed: passed,
-          completedAt: passed ? now : undefined,
-        },
-      ],
-      quizzes: [
-        {
-          id: `quiz-${lessonKey}`,
-          title: quizTitle,
-          score,
-          maxScore: total,
-          completedAt: now,
-        },
-      ],
-      achievements: passed ? [`${lessonKey}-complete`] : undefined,
-    });
+  const handleQuizComplete = ({ lessonId, percentage, passed, score, total, completedAt }: QuizCompletionPayload) => {
+    recordQuizAttempt({ lessonId, percentage, passed, score, total, completedAt });
   };
 
   const { totalLessons, completedCount, totalAttempts, bestMissionScore } = derived;
@@ -205,7 +179,22 @@ const EducationPage = () => {
   const animatedCompleted = useAnimatedNumber(completedCount);
   const animatedAttempts = useAnimatedNumber(totalAttempts);
   const animatedBestScore = useAnimatedNumber(bestMissionScore);
-  const animatedTotalScore = useAnimatedNumber(educationProgress.totalScore ?? 0);
+
+  const quizzes = educationProgress.quizzes ?? [];
+  const totalQuizQuestions = quizzes.reduce((sum, quiz) => sum + (quiz?.maxScore ?? 0), 0);
+  const totalCorrectAnswers = quizzes.reduce((sum, quiz) => sum + (quiz?.score ?? 0), 0);
+  const knowledgeAccuracy = totalQuizQuestions > 0 ? Math.round((totalCorrectAnswers / totalQuizQuestions) * 100) : 0;
+  const animatedKnowledgeAccuracy = useAnimatedNumber(knowledgeAccuracy);
+  const animatedCorrectAnswers = useAnimatedNumber(totalCorrectAnswers);
+  const animatedTotalQuestions = useAnimatedNumber(totalQuizQuestions);
+
+  const totalXP = Math.round(educationProgress.totalXP ?? 0);
+  const rankSnapshot = getRankForXP(totalXP);
+  const animatedXP = useAnimatedNumber(totalXP);
+  const animatedRankProgress = useAnimatedNumber(rankSnapshot.progress);
+  const knowledgeAccuracyDisplay = Math.round(animatedKnowledgeAccuracy);
+  const correctAnswersDisplay = Math.round(animatedCorrectAnswers);
+  const totalQuestionsDisplay = Math.round(animatedTotalQuestions);
 
   const unlockedAchievements = educationProgress.achievements ?? [];
   const allAchievementEntries = Object.entries(ACHIEVEMENT_DEFINITIONS);
@@ -221,7 +210,8 @@ const EducationPage = () => {
     return `Progress ${completedCount} of ${totalLessons} missions. Keep training to certify the rest.`;
   }, [completedCount, totalLessons]);
   const formattedBestScore = bestMissionScore > 0 ? `${Math.round(animatedBestScore)}%` : '—';
-  const formattedTotalScore = Math.round(animatedTotalScore);
+  const xpProgressDisplay = Math.min(100, Math.max(0, animatedRankProgress));
+  const xpToNextRank = rankSnapshot.next ? Math.max(0, rankSnapshot.xpRemaining) : 0;
   const isChallengeUnlocked = completedCount >= requiredLessonsForChallenge;
   const lessonsRemaining = Math.max(requiredLessonsForChallenge - completedCount, 0);
   const challengeSubtitle = isChallengeUnlocked
@@ -283,6 +273,33 @@ const EducationPage = () => {
               <p className="text-xs text-slate-400">
                 Ace the mission quiz with an 80% score to mark each lesson as complete.
               </p>
+              <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.35em] text-slate-400">
+                  <span>Rank</span>
+                  <span className="text-sky-100">{rankSnapshot.current.title}</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-400/90">{rankSnapshot.current.description}</p>
+                <div
+                  className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-800/80"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(xpProgressDisplay)}
+                >
+                  <motion.div
+                    className="h-full w-full origin-left rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-cyan-400"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: Math.max(0, Math.min(1, xpProgressDisplay / 100)) }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                  <span>{Math.round(animatedXP)} XP</span>
+                  <span>
+                    {rankSnapshot.next ? `${xpToNextRank} XP to ${rankSnapshot.next.title}` : 'Max Rank Achieved'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -336,6 +353,22 @@ const EducationPage = () => {
                     ) : null}
                   </div>
                   <p className="text-sm leading-6 text-slate-300">{lesson.description}</p>
+                  {hasAttempt ? (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.35em] text-slate-400">
+                        <span>Knowledge Progress</span>
+                        <span>{bestScore}%</span>
+                      </div>
+                      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-800/70">
+                        <motion.div
+                          className="h-full w-full origin-left rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: Math.max(0, Math.min(1, bestScore / 100)) }}
+                          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="mt-auto flex items-center justify-between gap-3 text-xs uppercase tracking-[0.35em] text-slate-400">
                     Tap to expand lesson
                     <span aria-hidden="true" className="text-base text-cyan-200/70 transition-transform duration-300 group-hover:translate-x-1">
@@ -449,19 +482,31 @@ const EducationPage = () => {
                 <p className="mt-3 text-2xl font-semibold text-sky-100">
                   {Math.round(animatedCompleted)}/{totalLessons}
                 </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  Certified {completedCount} of {totalLessons} training modules.
+                </p>
               </div>
               <div className="rounded-2xl border border-blue-400/25 bg-slate-900/70 p-5">
-                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Quiz Attempts</p>
-                <p className="mt-3 text-2xl font-semibold text-sky-100">{Math.round(animatedAttempts)}</p>
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Knowledge Systems Check</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">
+                  {totalQuestionsDisplay > 0 ? `${correctAnswersDisplay}/${totalQuestionsDisplay}` : '—'}
+                </p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Accuracy {totalQuestionsDisplay > 0 ? `${knowledgeAccuracyDisplay}%` : '—'}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">Personal Best {formattedBestScore}</p>
               </div>
               <div className="rounded-2xl border border-emerald-400/25 bg-slate-900/70 p-5">
-                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Best Score</p>
-                <p className="mt-3 text-2xl font-semibold text-sky-100">{formattedBestScore}</p>
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Quiz Activity</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">{Math.round(animatedAttempts)}</p>
+                <p className="mt-1 text-xs text-slate-400">Completed Quizzes {quizzes.length}</p>
               </div>
               <div className="rounded-2xl border border-indigo-400/25 bg-slate-900/70 p-5">
-                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Challenge Score</p>
-                <p className="mt-3 text-2xl font-semibold text-sky-100">
-                  {formattedTotalScore > 0 ? formattedTotalScore : '—'}
+                <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/70">Lifetime XP</p>
+                <p className="mt-3 text-2xl font-semibold text-sky-100">{Math.round(animatedXP)} XP</p>
+                <p className="mt-1 text-xs text-slate-400">Rank {rankSnapshot.current.title}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {rankSnapshot.next ? `${xpToNextRank} XP to ${rankSnapshot.next.title}` : 'Max Rank Achieved'}
                 </p>
               </div>
             </div>

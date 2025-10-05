@@ -3,6 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 import type { QuizQuestion } from '../../data/quizzes.ts';
+import {
+  getEducationProgress,
+  quizScoreToXP,
+  type QuizProgress,
+  updateEducationProgress,
+} from '../../utils/educationProgress.ts';
 
 export interface QuizCompletionPayload {
   lessonId: number;
@@ -10,13 +16,19 @@ export interface QuizCompletionPayload {
   total: number;
   percentage: number;
   passed: boolean;
+  completedAt: string;
+  quizId: string;
+  xpEarned: number;
+  totalXP: number;
 }
 
 interface QuizModuleProps {
   lessonId: number;
+  lessonTitle?: string;
   questions: QuizQuestion[];
   onComplete: (payload: QuizCompletionPayload) => void;
   showCompletionModal?: boolean;
+  persistProgress?: boolean;
 }
 
 const PASSING_PERCENTAGE = 80;
@@ -121,7 +133,14 @@ const SparkleBurstEffect = () => {
   );
 };
 
-const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = true }: QuizModuleProps) => {
+const QuizModule = ({
+  lessonId,
+  lessonTitle,
+  questions,
+  onComplete,
+  showCompletionModal = true,
+  persistProgress = true,
+}: QuizModuleProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
@@ -129,9 +148,18 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
   const [showResults, setShowResults] = useState(false);
   const [sparkleBurst, setSparkleBurst] = useState<number | null>(null);
   const [resultSnapshot, setResultSnapshot] = useState({ score: 0, total: questions.length, percentage: 0 });
+  const [persistedQuiz, setPersistedQuiz] = useState<QuizProgress | null>(null);
+  const [sessionXpEarned, setSessionXpEarned] = useState(0);
+  const [totalXP, setTotalXP] = useState(0);
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentQuestionIndex];
+  const lessonKey = useMemo(() => `lesson-${lessonId.toString().padStart(2, '0')}`, [lessonId]);
+  const quizId = useMemo(() => `quiz-${lessonKey}`, [lessonKey]);
+  const resolvedLessonTitle = useMemo(
+    () => lessonTitle ?? `Lesson ${lessonId.toString().padStart(2, '0')}`,
+    [lessonId, lessonTitle],
+  );
   const progress = useMemo(() => {
     if (totalQuestions === 0) {
       return 0;
@@ -140,6 +168,13 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
     const answeredBonus = selectedAnswer !== null ? 100 / totalQuestions : 0;
     return Math.min(100, base + answeredBonus);
   }, [currentQuestionIndex, totalQuestions, selectedAnswer]);
+
+  const personalBestPercentage = useMemo(() => {
+    if (!persistedQuiz || persistedQuiz.maxScore <= 0) {
+      return 0;
+    }
+    return Math.round((persistedQuiz.score / persistedQuiz.maxScore) * 100);
+  }, [persistedQuiz]);
 
   useEffect(() => {
     if (sparkleBurst === null) {
@@ -157,7 +192,16 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
     setSparkleBurst(null);
     setShowResults(false);
     setResultSnapshot({ score: 0, total: questions.length, percentage: 0 });
+    setSessionXpEarned(0);
   }, [lessonId, questions]);
+
+  useEffect(() => {
+    const stored = getEducationProgress();
+    const quizEntry = stored.quizzes.find((quiz) => quiz.id === quizId) ?? null;
+    setPersistedQuiz(quizEntry);
+    setTotalXP(Math.round(stored.totalXP ?? 0));
+    setSessionXpEarned(0);
+  }, [quizId]);
 
   const handleAnswerSelect = (index: number) => {
     if (selectedAnswer !== null) {
@@ -191,20 +235,62 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
     setShowResults(false);
     setSparkleBurst(null);
     setResultSnapshot({ score: 0, total: questions.length, percentage: 0 });
+    setSessionXpEarned(0);
   };
 
   const handleQuizComplete = () => {
-    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    const finalScore = score;
+    const percentage = totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0;
     const passed = percentage >= PASSING_PERCENTAGE;
-    setResultSnapshot({ score, total: totalQuestions, percentage });
+    const completedAt = new Date().toISOString();
+
+    const quizRecord: QuizProgress = {
+      id: quizId,
+      title: `${resolvedLessonTitle} Knowledge Quiz`,
+      score: finalScore,
+      maxScore: totalQuestions,
+      completedAt,
+    };
+
+    const trackerProgress = persistProgress
+      ? updateEducationProgress({
+          lessons: [
+            {
+              id: lessonKey,
+              title: resolvedLessonTitle,
+              completed: passed,
+              completedAt: passed ? completedAt : undefined,
+            },
+          ],
+          quizzes: [quizRecord],
+        })
+      : getEducationProgress();
+
+    const updatedQuiz = persistProgress
+      ? trackerProgress.quizzes.find((entry) => entry.id === quizId) ?? quizRecord
+      : quizRecord;
+
+    const previousXP = persistedQuiz ? quizScoreToXP(persistedQuiz.score, persistedQuiz.maxScore) : 0;
+    const nextXP = quizScoreToXP(updatedQuiz.score, updatedQuiz.maxScore);
+    const xpEarned = persistProgress ? Math.max(0, nextXP - previousXP) : 0;
+
+    setPersistedQuiz(updatedQuiz);
+    setTotalXP(trackerProgress.totalXP);
+    setSessionXpEarned(xpEarned);
+    setResultSnapshot({ score: finalScore, total: totalQuestions, percentage });
+    setShowResults(true);
+
     onComplete({
       lessonId,
-      score,
+      score: finalScore,
       total: totalQuestions,
       percentage,
       passed,
+      completedAt,
+      quizId,
+      xpEarned,
+      totalXP: trackerProgress.totalXP,
     });
-    setShowResults(true);
   };
 
   if (!currentQuestion) {
@@ -246,6 +332,11 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
             <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
               Score {score}/{totalQuestions}
             </p>
+            {persistedQuiz ? (
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-200/80">
+                Personal Best {persistedQuiz.score}/{persistedQuiz.maxScore} ({personalBestPercentage}%)
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -395,6 +486,18 @@ const QuizModule = ({ lessonId, questions, onComplete, showCompletionModal = tru
                   {`You achieved a ${resultSnapshot.percentage}% systems accuracy.`}
                   {` ${resultSnapshot.percentage >= PASSING_PERCENTAGE ? 'Lesson marked as complete!' : 'Review the data and try again.'}`}
                 </p>
+                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4 text-left text-sm text-sky-100">
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-200/80">XP Report</p>
+                  <p className="mt-2 text-base font-semibold text-cyan-100">
+                    {sessionXpEarned > 0 ? `+${sessionXpEarned} XP earned` : 'No new XP this run'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-300">Total XP: {totalXP.toLocaleString()}</p>
+                  {persistedQuiz ? (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Personal best {persistedQuiz.score}/{persistedQuiz.maxScore} ({personalBestPercentage}%)
+                    </p>
+                  ) : null}
+                </div>
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
                   <button
                     type="button"

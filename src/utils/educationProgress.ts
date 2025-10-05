@@ -8,6 +8,22 @@ export interface EducationProgress {
   lastUpdated: string;
 }
 
+export interface EducationRank {
+  id: string;
+  title: string;
+  minXP: number;
+  description: string;
+}
+
+export interface RankProgressSnapshot {
+  current: EducationRank;
+  next: EducationRank | null;
+  progress: number;
+  xpIntoCurrent: number;
+  xpForCurrent: number;
+  xpRemaining: number;
+}
+
 export interface LessonProgress {
   id: string;
   title: string;
@@ -30,6 +46,39 @@ const DEFAULT_PROGRESS: EducationProgress = {
   achievements: [],
   lastUpdated: new Date(0).toISOString(),
 };
+
+export const EDUCATION_RANKS: EducationRank[] = [
+  {
+    id: 'cadet',
+    title: 'Orbital Cadet',
+    minXP: 0,
+    description: 'Freshly assigned to Cupola duty and beginning ISS systems training.',
+  },
+  {
+    id: 'specialist',
+    title: 'Systems Specialist',
+    minXP: 150,
+    description: 'Certified on key Cupola procedures with solid knowledge check scores.',
+  },
+  {
+    id: 'pilot',
+    title: 'Station Pilot',
+    minXP: 350,
+    description: 'Trusted with guiding orbital operations thanks to consistent high accuracy.',
+  },
+  {
+    id: 'commander',
+    title: 'Mission Commander',
+    minXP: 600,
+    description: 'Leads Cupola observations with expert-level mastery of training modules.',
+  },
+  {
+    id: 'legend',
+    title: 'Explorer Legend',
+    minXP: 900,
+    description: 'An elite Cupola observer whose telemetry knowledge is unmatched.',
+  },
+];
 
 const normalizeLesson = (lesson: LessonProgress): LessonProgress => ({
   id: lesson.id,
@@ -98,6 +147,10 @@ const normalizeDate = (value?: string) => {
     return undefined;
   }
   return new Date(timestamp).toISOString();
+};
+
+export const getEducationProgress = (): EducationProgress => {
+  return readStoredProgress();
 };
 
 const mergeLessonProgress = (current: LessonProgress[], incoming: LessonProgress[]): LessonProgress[] => {
@@ -174,12 +227,16 @@ export const mergeUnique = <T>(base: T[] = [], incoming: T[] = []): T[] => {
   return result;
 };
 
-const scoreToXP = (quiz: QuizProgress): number => {
-  if (quiz.maxScore <= 0) {
-    return Math.max(0, Math.round(quiz.score));
+export const quizScoreToXP = (score: number, maxScore: number): number => {
+  if (maxScore <= 0) {
+    return Math.max(0, Math.round(score));
   }
-  const ratio = quiz.score / quiz.maxScore;
+  const ratio = score / maxScore;
   return Math.max(0, Math.round(ratio * 100));
+};
+
+const scoreToXP = (quiz: QuizProgress): number => {
+  return quizScoreToXP(quiz.score, quiz.maxScore);
 };
 
 export const calculateTotalXP = (
@@ -244,6 +301,61 @@ export const updateEducationProgress = (
   }
 
   return next;
+};
+
+export const getRankForXP = (xp: number): RankProgressSnapshot => {
+  const sorted = [...EDUCATION_RANKS].sort((a, b) => a.minXP - b.minXP);
+  if (sorted.length === 0) {
+    const fallback: EducationRank = {
+      id: 'explorer',
+      title: 'Explorer',
+      minXP: 0,
+      description: 'Learning the systems of the International Space Station.',
+    };
+    return {
+      current: fallback,
+      next: null,
+      progress: 100,
+      xpIntoCurrent: xp,
+      xpForCurrent: Math.max(1, xp),
+      xpRemaining: 0,
+    };
+  }
+
+  const current = sorted.reduce((acc, rank) => {
+    if (xp >= rank.minXP) {
+      return rank;
+    }
+    return acc;
+  }, sorted[0]);
+
+  const currentIndex = sorted.findIndex((rank) => rank.id === current.id);
+  const next = sorted.slice(currentIndex + 1).find((rank) => rank.minXP > current.minXP) ?? null;
+
+  if (!next) {
+    return {
+      current,
+      next: null,
+      progress: 100,
+      xpIntoCurrent: Math.max(0, xp - current.minXP),
+      xpForCurrent: Math.max(1, Math.max(0, xp - current.minXP)),
+      xpRemaining: 0,
+    };
+  }
+
+  const range = Math.max(1, next.minXP - current.minXP);
+  const xpIntoCurrent = Math.max(0, xp - current.minXP);
+  const progress = Math.min(100, Math.max(0, (xpIntoCurrent / range) * 100));
+  const xpRemaining = Math.max(0, next.minXP - xp);
+
+  return {
+    current,
+    next,
+    progress,
+    xpIntoCurrent,
+    xpForCurrent: range,
+    xpRemaining,
+  };
 };
 
 export default updateEducationProgress;
